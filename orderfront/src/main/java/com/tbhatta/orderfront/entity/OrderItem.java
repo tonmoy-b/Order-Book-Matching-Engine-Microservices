@@ -11,15 +11,14 @@ import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.time.DateTimeException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 
 @Entity
-public class Order {
+public class OrderItem {
 
-    private static final Logger log = LoggerFactory.getLogger(Order.class);
+    private static final Logger log = LoggerFactory.getLogger(OrderItem.class);
     @Id
     @GeneratedValue(strategy =  GenerationType.AUTO)
     private UUID orderId;
@@ -44,7 +43,7 @@ public class Order {
 
     private static final String dtPattern = "yyyy-MM-dd HH:mm:ss.SSS";
 
-    public LocalDateTime placeServiceDatetime(String strDateTime) {
+    public LocalDateTime placeServiceDatetime(String strDateTime) throws Exception {
         try {
             DateTimeFormatter dateTimeFormat = DateTimeFormatter.ofPattern(dtPattern);
             return LocalDateTime.parse(strDateTime, dateTimeFormat);
@@ -54,7 +53,7 @@ public class Order {
         }
     }
 
-    public Order(UUID orderId, String clientId, String asset, LocalDateTime orderTime, String orderType, BigDecimal amount, BigInteger volume) {
+    public OrderItem(UUID orderId, String clientId, String asset, LocalDateTime orderTime, String orderType, BigDecimal amount, BigInteger volume) {
         this.orderId = orderId;
         this.clientId = clientId;
         this.asset = asset;
@@ -90,6 +89,10 @@ public class Order {
 
     public LocalDateTime getOrderTime() {
         return orderTime;
+    }
+
+    public void setOrderTime(String strDateTime) throws Exception{
+        this.orderTime = placeServiceDatetime( strDateTime);
     }
 
     public void setOrderTime(LocalDateTime orderTime) {
