@@ -63,6 +63,9 @@ public class OrderItem {
         this.volume = volume;
     }
 
+    public OrderItem() {
+    }
+
     public UUID getOrderId() {
         return orderId;
     }

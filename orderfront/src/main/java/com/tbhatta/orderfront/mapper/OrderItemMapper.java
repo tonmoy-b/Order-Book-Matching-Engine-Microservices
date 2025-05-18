@@ -3,7 +3,11 @@ package com.tbhatta.orderfront.mapper;
 import com.tbhatta.orderfront.dto.OrderItemDTO;
 import com.tbhatta.orderfront.entity.OrderItem;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.UUID;
 
 public class OrderItemMapper {
 
@@ -19,5 +23,16 @@ public class OrderItemMapper {
         orderItemDTO.setAmount(orderItem.getAmount().toString().strip());
         orderItemDTO.setVolume(orderItem.getVolume().toString().strip());
         return orderItemDTO;
+    }
+
+    public static OrderItem toModel(OrderItemDTO orderItemDTO) {
+        OrderItem orderItem = new OrderItem();
+        orderItem.setClientId(orderItemDTO.getClientId());
+        orderItem.setAsset(orderItemDTO.getAsset());
+        orderItem.setOrderTime(LocalDateTime.now());
+        orderItem.setOrderType(orderItemDTO.getOrderType());
+        orderItem.setAmount(new BigDecimal(orderItemDTO.getAmount()));
+        orderItem.setVolume(new BigInteger(orderItemDTO.getVolume()));
+        return orderItem;
     }
 }
