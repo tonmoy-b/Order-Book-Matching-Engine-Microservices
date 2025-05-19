@@ -1,10 +1,14 @@
+include:
+  - kafka-docker-compose.yml
+
 services:
   kafka-orders-broker:
     image: apache/kafka:latest
-    hostname: broker
-    container_name: broker
+    hostname: kafka_orders
+    container_name: kafka_orders
     ports:
       - 9092:9092
+      - 9093:9093
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,CONTROLLER:PLAINTEXT
@@ -21,15 +25,17 @@ services:
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_LOG_DIRS: /tmp/kraft-combined-logs
       CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+    networks:
+      - backend
 
-  redis-master:
-    image: redis:latest
-    container_name: redis-master
-    restart: always
-    volumes:
-      - redis_master:/data
-    ports:
-      - 6379:6379
+#  redis-master:
+#    image: redis:latest
+#    container_name: redis-master
+#    restart: always
+#    volumes:
+#      - redis_master:/data
+#    ports:
+#      - 6379:6379
 
 #  redis-slave:
 #    image: redis:latest
@@ -46,7 +52,13 @@ services:
     hostname: pg_orders
     container_name: pg_orders
     ports:
-      - 9092:9092
+      - 5432:5432
+    environment:
+      POSTGRES_DB: db01
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: pwd
+    networks:
+      - backend
 
 networks:
   backend:
