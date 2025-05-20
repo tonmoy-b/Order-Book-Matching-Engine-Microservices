@@ -3,6 +3,7 @@ package com.tbhatta.orderfront.kafka;
 import ch.qos.logback.core.encoder.EchoEncoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import com.tbhatta.orderfront.entity.OrderItem;
@@ -12,6 +13,7 @@ import com.tbhatta.protos.OrderItemEvent;
 public class KafkaProducer {
 
     private static final Logger log = LoggerFactory.getLogger(KafkaProducer.class);
+
     private final KafkaTemplate<String, byte[]> kafkaTemplate;
 
     public KafkaProducer(KafkaTemplate<String, byte[]> kafkaTemplate) {
