@@ -1,9 +1,9 @@
-include:
-  - kafka-docker-compose.yml
+#include:
+#  - kafka-docker-compose.yml
 
 services:
   kafka-orders-broker:
-    image: apache/kafka:latest
+    image: bitnami/kafka:latest
     hostname: kafka_orders
     container_name: kafka_orders
     ports:
@@ -24,7 +24,6 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_LOG_DIRS: /tmp/kraft-combined-logs
-      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
     networks:
       - backend
 
@@ -36,7 +35,6 @@ services:
 #      - redis_master:/data
 #    ports:
 #      - 6379:6379
-
 #  redis-slave:
 #    image: redis:latest
 #    container_name: redis-slave
