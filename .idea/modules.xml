@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/OrderBookNMatch.iml" filepath="$PROJECT_DIR$/OrderBookNMatch.iml" />
+      <module fileurl="file://$PROJECT_DIR$/orderfront/orderfront.iml" filepath="$PROJECT_DIR$/orderfront/orderfront.iml" />
     </modules>
   </component>
 </project>
