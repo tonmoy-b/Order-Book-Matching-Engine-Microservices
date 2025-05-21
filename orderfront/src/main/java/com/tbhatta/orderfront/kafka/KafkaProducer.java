@@ -7,7 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import com.tbhatta.orderfront.entity.OrderItem;
-import com.tbhatta.protos.OrderItemEvent;
+import com.tbhatta.protos.of.OrderItemEvent;
 
 @Service
 public class KafkaProducer {
@@ -19,7 +19,6 @@ public class KafkaProducer {
     public KafkaProducer(KafkaTemplate<String, byte[]> kafkaTemplate) {
         this.kafkaTemplate = kafkaTemplate;
     }
-
 
 
     public void sendOrderItemCreatedEvent(OrderItem orderItem) {

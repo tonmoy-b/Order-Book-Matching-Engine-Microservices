@@ -1,7 +1,7 @@
 package com.tbhatta.matchingengine.service;
 
 import com.google.protobuf.InvalidProtocolBufferException;
-import com.tbhatta.protos.OrderItemEvent;
+import com.tbhatta.protos.me.OrderItemEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
