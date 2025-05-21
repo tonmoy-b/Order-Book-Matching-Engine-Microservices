@@ -27,6 +27,10 @@ public class KafkaProducer {
                 .setOrderId(orderItem.getOrderId().toString())
                 .setClientId(orderItem.getClientId())
                 .setAsset(orderItem.getAsset())
+                .setOrderTime(orderItem.getOrderTime().toString())
+                .setOrderType(orderItem.getOrderType())
+                .setAmount(orderItem.getAmount().toString())
+                .setVolume(orderItem.getVolume().toString())
                 .build();
         try {
             kafkaTemplate.send("orderitem", orderItemEvent.toByteArray());
