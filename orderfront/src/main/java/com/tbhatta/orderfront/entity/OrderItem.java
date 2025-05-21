@@ -41,7 +41,7 @@ public class OrderItem {
     @NotNull
     private BigInteger volume;
 
-    private static final String dtPattern = "yyyy-MM-dd HH:mm:ss.SSS";
+    private static final String dtPattern = "yyyy-MM-dd HH:mm:ss";//"yyyy-MM-dd HH:mm:ss.SSS";
 
     public LocalDateTime placeServiceDatetime(String strDateTime) throws Exception {
         try {

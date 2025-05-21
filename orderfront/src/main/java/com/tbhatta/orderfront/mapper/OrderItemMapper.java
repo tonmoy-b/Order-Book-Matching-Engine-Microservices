@@ -11,7 +11,7 @@ import java.util.UUID;
 
 public class OrderItemMapper {
 
-    private static final String dtPattern = "yyyy-MM-dd HH:mm:ss.SSS";
+    private static final String dtPattern = "yyyy-MM-dd HH:mm:ss";
 
     public static OrderItemDTO orderItemToDTO(OrderItem orderItem) {
         OrderItemDTO orderItemDTO = new OrderItemDTO();
