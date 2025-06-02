@@ -12,9 +12,12 @@ import org.springframework.stereotype.Service;
 @Service
 public class KafkaConsumer {
 
-    @Autowired private OrderBook orderBook;
-
+    private OrderBook orderBook;
     private static final Logger log = LoggerFactory.getLogger(KafkaConsumer.class);
+
+    public KafkaConsumer(OrderBook orderBook) {
+        this.orderBook = orderBook;
+    }
 
     @KafkaListener(topics = "orderitem", groupId = "matching-engine")
     public void receiveOrderItemEvent(byte[] kafkaMessage) {
