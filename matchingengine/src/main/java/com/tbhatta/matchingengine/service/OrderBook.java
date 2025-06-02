@@ -1,7 +1,6 @@
 package com.tbhatta.matchingengine.service;
 
-import com.tbhatta.matchingengine.model.comparator.AskComparatorPriceBigDecimal;
-import com.tbhatta.matchingengine.model.comparator.BidComparatorPriceBigDecimal;
+import com.tbhatta.matchingengine.model.comparator.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -10,8 +9,6 @@ import java.math.BigDecimal;
 import java.util.PriorityQueue;
 import java.util.TreeMap;
 
-import com.tbhatta.matchingengine.model.comparator.AskComparatorPrice;
-import com.tbhatta.matchingengine.model.comparator.BidComparatorPrice;
 import com.tbhatta.matchingengine.model.OrderItemModel;
 
 @Service
@@ -38,17 +35,25 @@ public class OrderBook {
     }
 
     public void enterOrderItem(OrderItemModel orderItemModel) {
+        BigDecimal price = orderItemModel.getAmount();
         if (orderItemModel.getOrderType().toLowerCase().strip().equals("bid")) {
-            BigDecimal price = orderItemModel.getAmount();
             if (bidTreeMap.containsKey(price)) {
                 PriorityQueue<OrderItemModel> pQ = bidTreeMap.get(price);
                 pQ.add(orderItemModel);
             } else {
-                //bidTreeMap.put(price, new PriorityQueue<OrderItemModel>(new BidComparatorPriceBigDecimal()))
+                PriorityQueue<OrderItemModel> bidPriorityQueue = new PriorityQueue<OrderItemModel>(new BidComparatorOrderTime());
+                bidPriorityQueue.add(orderItemModel);
+                bidTreeMap.put(price, bidPriorityQueue);
             }
-
         } else if (orderItemModel.getOrderType().toLowerCase().strip().equals("ask")){
-            askPQ.add(orderItemModel);
+            if (askTreeMap.containsKey(price)) {
+                PriorityQueue<OrderItemModel> pQ = askTreeMap.get(price);
+                pQ.add(orderItemModel);
+            } else {
+                PriorityQueue<OrderItemModel> askPriorityQueue = new PriorityQueue<OrderItemModel>(new AskComparatorOrderTime());
+                askPriorityQueue.add(orderItemModel);
+                askTreeMap.put(price, askPriorityQueue);
+            }
         } else {
             log.error("Invalid Order Item OrderType of {}", orderItemModel.getOrderType());
         }
