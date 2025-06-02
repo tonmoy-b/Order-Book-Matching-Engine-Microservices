@@ -1,7 +1,6 @@
 package com.tbhatta.matchingengine.model;
 
 import com.tbhatta.protos.me.OrderItemEvent;
-import jakarta.validation.constraints.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -10,9 +9,6 @@ import java.math.BigInteger;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.UUID;
-
-import com.tbhatta.matchingengine.model.comparator.AskComparator;
-import com.tbhatta.matchingengine.model.comparator.BidComparator;
 
 public class OrderItemModel {
     private static final String dtPattern = "yyyy-MM-dd HH:mm:ss";
