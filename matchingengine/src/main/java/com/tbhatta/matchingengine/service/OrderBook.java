@@ -3,9 +3,11 @@ package com.tbhatta.matchingengine.service;
 import com.tbhatta.matchingengine.model.comparator.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.util.HashMap;
 import java.util.PriorityQueue;
 import java.util.TreeMap;
 
@@ -14,25 +16,17 @@ import com.tbhatta.matchingengine.model.OrderItemModel;
 @Service
 public class OrderBook {
     private static final Logger log = LoggerFactory.getLogger(OrderBook.class);
-    public PriorityQueue<OrderItemModel> askPQ, bidPQ;
+    //public PriorityQueue<OrderItemModel> askPQ, bidPQ;
     public TreeMap<BigDecimal, PriorityQueue<OrderItemModel>> bidTreeMap, askTreeMap;
+    public HashMap<String, TreeMap<BigDecimal, PriorityQueue<OrderItemModel>>> assetHashMap;
 
     public OrderBook() {
-        askPQ = new PriorityQueue<>(new AskComparatorPrice());
-        bidPQ = new PriorityQueue<>(new BidComparatorPrice());
+        //askPQ = new PriorityQueue<>(new AskComparatorPrice());
+        //bidPQ = new PriorityQueue<>(new BidComparatorPrice());
         bidTreeMap = new TreeMap<>(new BidComparatorPriceBigDecimal());
         askTreeMap = new TreeMap<>(new AskComparatorPriceBigDecimal());
     }
 
-    public void enterOrderItem0(OrderItemModel orderItemModel) {
-        if (orderItemModel.getOrderType().toLowerCase().strip().equals("bid")) {
-            bidPQ.add(orderItemModel);
-        } else if (orderItemModel.getOrderType().toLowerCase().strip().equals("ask")){
-            askPQ.add(orderItemModel);
-        } else {
-            log.error("Invalid Order Item OrderType of {}", orderItemModel.getOrderType());
-        }
-    }
 
     public void enterOrderItem(OrderItemModel orderItemModel) {
         BigDecimal price = orderItemModel.getAmount();
@@ -59,6 +53,20 @@ public class OrderBook {
         }
     }
 
+    @Scheduled(fixedRate = 3000)
+    public void runMatchingEngine() {
+        try {
+            log.info("ME: Scheduled runMatchingEngine Executed");
+        } catch (Exception e) {
+            log.error("ME: Scheduled runMatchingEngine Exception {}", e.getMessage());
+        }
+
+    }
+
+    private void getHighBid() {
+
+    }
+
     public String printAskTreeMap() {
         String s = askTreeMap.toString();
         log.info("AskTreeMap is \n\t {}", s);
@@ -69,6 +77,14 @@ public class OrderBook {
         String s = bidTreeMap.toString();
         log.info("BidTreeMap is \n\t {}", s);
         return s;
+    }
+
+    public TreeMap<BigDecimal, PriorityQueue<OrderItemModel>> getBidTreeMap() {
+        return bidTreeMap;
+    }
+
+    public TreeMap<BigDecimal, PriorityQueue<OrderItemModel>> getAskTreeMap() {
+        return askTreeMap;
     }
 
     public String printBidTreePQueue(BigDecimal price) {

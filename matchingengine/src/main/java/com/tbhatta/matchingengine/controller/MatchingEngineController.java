@@ -33,37 +33,51 @@ public class MatchingEngineController {
         return "Hello, World!";
     }
 
-    @GetMapping("/bids")
-    public String getBids() {
-        try {
-            ObjectMapper objectMapper = new ObjectMapper();
-            objectMapper.registerModule(new JavaTimeModule());
-            return objectMapper.writeValueAsString(orderBook.bidPQ);
-        } catch (Exception e) {
-            log.error("Error in getting ME-Bids : "+e.getMessage());
-            return "Error in getting Bids";
-        }
-    }
+//    @GetMapping("/bids")
+//    public String getBids() {
+//        try {
+//            ObjectMapper objectMapper = new ObjectMapper();
+//            objectMapper.registerModule(new JavaTimeModule());
+//            return objectMapper.writeValueAsString(orderBook.bidPQ);
+//        } catch (Exception e) {
+//            log.error("Error in getting ME-Bids : "+e.getMessage());
+//            return "Error in getting Bids";
+//        }
+//    }
 
-    @GetMapping("/asks")
-    public String getAsks() {
-        try {
-            ObjectMapper objectMapper = new ObjectMapper();
-            objectMapper.registerModule(new JavaTimeModule());
-            return objectMapper.writeValueAsString(orderBook.askPQ);
-        } catch (Exception e) {
-            log.error("Error in getting ME-Asks : "+e.getMessage());
-            return "Error in getting Asks";
-        }
-    }
+//    @GetMapping("/asks")
+//    public String getAsks() {
+//        try {
+//            ObjectMapper objectMapper = new ObjectMapper();
+//            objectMapper.registerModule(new JavaTimeModule());
+//            return objectMapper.writeValueAsString(orderBook.askPQ);
+//        } catch (Exception e) {
+//            log.error("Error in getting ME-Asks : "+e.getMessage());
+//            return "Error in getting Asks";
+//        }
+//    }
 
     @GetMapping("/ask-treemap")
     public String getAskTreeMap() {
-        return orderBook.printAskTreeMap();
+        //return orderBook.printAskTreeMap();
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            objectMapper.registerModule(new JavaTimeModule());
+            return objectMapper.writeValueAsString(orderBook.getAskTreeMap());
+        } catch (Exception e) {
+            return "Error is gathering info";
+        }
     }
 
     @GetMapping("/bid-treemap")
     public String getBidTreeMap() {
-        return orderBook.printBidTreeMap();
+        //return orderBook.printBidTreeMap();
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            objectMapper.registerModule(new JavaTimeModule());
+            return objectMapper.writeValueAsString(orderBook.getBidTreeMap());
+        } catch (Exception e) {
+            return "Error is gathering info";
+        }
     }
 }

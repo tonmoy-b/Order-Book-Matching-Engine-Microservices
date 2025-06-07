@@ -6,7 +6,7 @@ import java.util.Comparator;
 public class BidComparatorPriceBigDecimal implements Comparator<BigDecimal> {
     @Override
     public int compare(BigDecimal o1, BigDecimal o2) {
-        return o1.compareTo(o2);
+        return o2.compareTo(o1);
     }
 
 

@@ -8,6 +8,6 @@ public class AskComparatorPriceBigDecimal implements Comparator<BigDecimal> {
 
     @Override
     public int compare(BigDecimal o1, BigDecimal o2) {
-        return o2.compareTo(o1);
+        return o1.compareTo(o2);
     }
 }
