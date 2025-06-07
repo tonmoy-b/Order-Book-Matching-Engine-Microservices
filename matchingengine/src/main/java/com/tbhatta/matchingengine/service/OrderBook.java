@@ -56,6 +56,7 @@ public class OrderBook {
     @Scheduled(fixedRate = 3000)
     public void runMatchingEngine() {
         try {
+            getHighBid();
             log.info("ME: Scheduled runMatchingEngine Executed");
         } catch (Exception e) {
             log.error("ME: Scheduled runMatchingEngine Exception {}", e.getMessage());
@@ -64,7 +65,11 @@ public class OrderBook {
     }
 
     private void getHighBid() {
-
+        BigDecimal highestBid = bidTreeMap.firstKey();
+        BigDecimal lowestAsk = askTreeMap.firstKey();
+        log.info("bid {}", bidTreeMap.get(highestBid).toString());
+        log.info("ask {}", askTreeMap.get(lowestAsk).toString());
+        log.info("The highest bid is {} and the lowest ask is {}.", highestBid, lowestAsk);
     }
 
     public String printAskTreeMap() {
