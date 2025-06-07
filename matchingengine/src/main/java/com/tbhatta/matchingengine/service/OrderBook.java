@@ -59,13 +59,31 @@ public class OrderBook {
         }
     }
 
-    public void printAskPQ() {
-        String s = askPQ.toString();
-        log.info("AskPQ is \n\t {}", s);
+    public String printAskTreeMap() {
+        String s = askTreeMap.toString();
+        log.info("AskTreeMap is \n\t {}", s);
+        return s;
     }
 
-    public void printBidPQ() {
-        String s = bidPQ.toString();
-        log.info("AskPQ is \n\t {}", s);
+    public String printBidTreeMap() {
+        String s = bidTreeMap.toString();
+        log.info("BidTreeMap is \n\t {}", s);
+        return s;
+    }
+
+    public String printBidTreePQueue(BigDecimal price) {
+        if (bidTreeMap.containsKey(price)) {
+            return bidTreeMap.get(price).toString();
+        } else {
+            return "PriorityQueue for this Price does not exist";
+        }
+    }
+
+    public String printAskTreePQueue(BigDecimal price) {
+        if (askTreeMap.containsKey(price)) {
+            return askTreeMap.get(price).toString();
+        } else {
+            return "PriorityQueue for this Price does not exist";
+        }
     }
 }

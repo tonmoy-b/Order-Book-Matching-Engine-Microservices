@@ -56,4 +56,14 @@ public class MatchingEngineController {
             return "Error in getting Asks";
         }
     }
+
+    @GetMapping("/ask-treemap")
+    public String getAskTreeMap() {
+        return orderBook.printAskTreeMap();
+    }
+
+    @GetMapping("/bid-treemap")
+    public String getBidTreeMap() {
+        return orderBook.printBidTreeMap();
+    }
 }
