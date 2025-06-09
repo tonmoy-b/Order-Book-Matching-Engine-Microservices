@@ -32,7 +32,8 @@ public class KafkaConsumer {
             log.info("MatchingEngineService made OrderItemModel\n\t" +
                     orderItemModel.toString()
                     );
-            orderBook.enterOrderItem(orderItemModel);
+            //orderBook.enterOrderItem(orderItemModel);
+            orderBook.enterOrderItem_(orderItemModel);
 
         } catch (InvalidProtocolBufferException e) {
             log.error("Protocol related Exception in Matchingengine service, receiveOrderItemEven with error message :" + e.getMessage());
