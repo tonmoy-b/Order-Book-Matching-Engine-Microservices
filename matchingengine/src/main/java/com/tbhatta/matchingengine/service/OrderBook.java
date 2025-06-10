@@ -58,7 +58,7 @@ public class OrderBook {
                     if (keyPrice.compareTo(orderPrice) >= 0)  {
                         try {
                             OrderItemModel bidOrder = bidTreeMap.get(keyPrice).peek();
-                            bidOrder = bidTreeMap.get(keyPrice).remove();
+                            bidOrder = bidTreeMap.get(keyPrice).poll();
                             break;
                         } catch (Exception e) {
                             log.info("ME Enginge Exception in fetching PQ {}", e.toString());
