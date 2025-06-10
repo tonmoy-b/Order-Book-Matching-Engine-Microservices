@@ -39,8 +39,8 @@ public class OrderBook {
             //if they do not exist, create hashmap
             if (!assetHashMap.containsKey(orderAsset)) {
                 TreeMap<BigDecimal, PriorityQueue<OrderItemModel>> bidTreeMap, askTreeMap;
-                bidTreeMap = new TreeMap<>();
-                askTreeMap = new TreeMap<>();
+                bidTreeMap = new TreeMap<>(new BidComparatorPriceBigDecimal());
+                askTreeMap = new TreeMap<>(new AskComparatorPriceBigDecimal());
                 HashMap<String, TreeMap<BigDecimal, PriorityQueue<OrderItemModel>>> treeMaps = new HashMap<>();
                 treeMaps.put(OrderBook.BID, bidTreeMap);
                 treeMaps.put(OrderBook.ASK, askTreeMap);
@@ -52,18 +52,18 @@ public class OrderBook {
             BigInteger ordervolume = orderItemModel.getVolume();
             List<OrderItemModel> transactions = new ArrayList<>();
             if (orderItemModel.getOrderType().strip().equalsIgnoreCase(OrderBook.ASK)) {
-                //get highest bid price for the asset
                 bidTreeMap = assetTreeMap.get(OrderBook.BID);
                 Iterator<BigDecimal> keyPricesBidTreeMap = bidTreeMap.keySet().iterator();
                 log.info("ME: Iterator of Bid Prices is {}", iteratorToString(keyPricesBidTreeMap));
+                BigInteger pendingVolume = orderItemModel.getVolume();//Volume to be sold to asker
                 while (keyPricesBidTreeMap.hasNext()) {
                     BigDecimal keyPrice = keyPricesBidTreeMap.next();
                     if (keyPrice.compareTo(orderPrice) >= 0)  {
+                        //
                         try {
                             //OrderItemModel bidOrder = bidTreeMap.get(keyPrice).peek();
                             //bidOrder = bidTreeMap.get(keyPrice).poll();
                             //break;
-                            BigInteger pendingVolume = orderItemModel.getVolume();//Volume to be sold to asker
                             PriorityQueue<OrderItemModel> priorityQueue = bidTreeMap.get(keyPrice);
                             //iterate through OrderItemModels in the PriorityQueue at this Price point
                             for (int i = 0; i < priorityQueue.size(); i++) {
@@ -88,6 +88,22 @@ public class OrderBook {
                         } catch (Exception e) {
                             log.info("ME Enginge Exception in fetching PQ {}", e.toString());
                         }
+                    } else {
+
+                    }
+                } //end of loop through all current BIDs
+                if (pendingVolume.compareTo(BigInteger.ZERO) > 0) {
+                    //theres still some volume that has not been met
+                    //so create an ASK for the remaining volume
+                    askTreeMap = assetTreeMap.get(OrderBook.ASK);
+                    orderItemModel.setVolume(pendingVolume);
+                    if (askTreeMap.containsKey(orderItemModel.getAmount())) {
+                        PriorityQueue<OrderItemModel> priorityQueue = askTreeMap.get(orderItemModel.getAmount());
+                        priorityQueue.add(orderItemModel);
+                    } else {
+                        PriorityQueue<OrderItemModel> priorityQueue = new PriorityQueue<OrderItemModel>(new AskComparatorOrderTime());
+                        priorityQueue.add(orderItemModel);
+                        askTreeMap.put(orderItemModel.getAmount(), priorityQueue);
                     }
                 }
             } else if (orderItemModel.getOrderType().strip().equalsIgnoreCase(OrderBook.BID)) {
@@ -95,6 +111,30 @@ public class OrderBook {
                 askTreeMap = assetTreeMap.get(OrderBook.ASK);
                 Iterator<BigDecimal> keyPricesAskTreeMap = askTreeMap.keySet().iterator();
                 log.info("ME: Iterator of Ask Prices is {}", iteratorToString(keyPricesAskTreeMap));
+                BigInteger pendingVolume = orderItemModel.getVolume();//Volume to be sold to asker
+                while (keyPricesAskTreeMap.hasNext()) {
+                    BigDecimal keyPrice = keyPricesAskTreeMap.next();
+                    if (keyPrice.compareTo(orderPrice) >= 0) {
+
+                    } else {
+
+                    }
+
+                } //end of loop through all current ASKs
+                if (pendingVolume.compareTo(BigInteger.ZERO) > 0) {
+                    //theres still some volume that has not been met
+                    //so create an ASK for the remaining volume
+                    bidTreeMap = assetTreeMap.get(OrderBook.BID);
+                    orderItemModel.setVolume(pendingVolume);
+                    if (bidTreeMap.containsKey(orderItemModel.getAmount())) {
+                        PriorityQueue<OrderItemModel> priorityQueue = bidTreeMap.get(orderItemModel.getAmount());
+                        priorityQueue.add(orderItemModel);
+                    } else {
+                        PriorityQueue<OrderItemModel> priorityQueue = new PriorityQueue<OrderItemModel>(new AskComparatorOrderTime());
+                        priorityQueue.add(orderItemModel);
+                        bidTreeMap.put(orderItemModel.getAmount(), priorityQueue);
+                    }
+                }
 
 
             } else {
