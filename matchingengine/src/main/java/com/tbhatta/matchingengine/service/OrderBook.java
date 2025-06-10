@@ -67,7 +67,7 @@ public class OrderBook {
                             PriorityQueue<OrderItemModel> priorityQueue = bidTreeMap.get(keyPrice);
                             //iterate through OrderItemModels in the PriorityQueue at this Price point
                             for (int i = 0; i < priorityQueue.size(); i++) {
-                                OrderItemModel bidOrder = bidTreeMap.get(keyPrice).peek();
+                                OrderItemModel bidOrder = bidTreeMap.get(keyPrice).poll();
                                 if (bidOrder == null) {
                                     continue;
                                 }
@@ -107,7 +107,7 @@ public class OrderBook {
                     }
                 }
             } else if (orderItemModel.getOrderType().strip().equalsIgnoreCase(OrderBook.BID)) {
-                //get highest bid price for the asset
+                //get lowest ask price for the asset
                 askTreeMap = assetTreeMap.get(OrderBook.ASK);
                 Iterator<BigDecimal> keyPricesAskTreeMap = askTreeMap.keySet().iterator();
                 log.info("ME: Iterator of Ask Prices is {}", iteratorToString(keyPricesAskTreeMap));
@@ -115,6 +115,29 @@ public class OrderBook {
                 while (keyPricesAskTreeMap.hasNext()) {
                     BigDecimal keyPrice = keyPricesAskTreeMap.next();
                     if (keyPrice.compareTo(orderPrice) >= 0) {
+                        try {
+                            PriorityQueue<OrderItemModel> priorityQueue = askTreeMap.get(keyPrice);
+                            for (int i = 0; i < priorityQueue.size(); i++) {
+                                OrderItemModel askOrder = askTreeMap.get(keyPrice).poll();
+                                if (askOrder == null) {
+                                    continue;
+                                }
+                                //doTransaction
+                                OrderItemModel transaction = new OrderItemModel();
+                                transaction.setAsset(orderItemModel.getAsset());
+                                transaction.setClientId(orderItemModel.getClientId());
+                                if (pendingVolume.compareTo(askOrder.getVolume()) <= 0) {
+                                    //orderItem is asking for less than the bid
+                                    transaction.setVolume(pendingVolume);
+                                    pendingVolume = BigInteger.valueOf(0);
+                                    askOrder.setVolume(askOrder.getVolume().subtract(transaction.getVolume()));
+                                    //log.info()
+                                }
+                            }
+
+                        } catch (Exception e) {
+
+                        }
 
                     } else {
 
