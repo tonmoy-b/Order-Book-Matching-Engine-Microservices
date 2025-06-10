@@ -9,6 +9,8 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.math.RoundingMode;
+import java.math.MathContext;
 import java.util.*;
 
 import com.tbhatta.matchingengine.model.OrderItemModel;
@@ -48,6 +50,7 @@ public class OrderBook {
             //if they exist, check if bid-tree exists in cse of ask order or vice versa
             BigDecimal orderPrice = orderItemModel.getAmount();
             BigInteger ordervolume = orderItemModel.getVolume();
+            List<OrderItemModel> transactions = new ArrayList<>();
             if (orderItemModel.getOrderType().strip().equalsIgnoreCase(OrderBook.ASK)) {
                 //get highest bid price for the asset
                 bidTreeMap = assetTreeMap.get(OrderBook.BID);
@@ -57,9 +60,31 @@ public class OrderBook {
                     BigDecimal keyPrice = keyPricesBidTreeMap.next();
                     if (keyPrice.compareTo(orderPrice) >= 0)  {
                         try {
-                            OrderItemModel bidOrder = bidTreeMap.get(keyPrice).peek();
-                            bidOrder = bidTreeMap.get(keyPrice).poll();
-                            break;
+                            //OrderItemModel bidOrder = bidTreeMap.get(keyPrice).peek();
+                            //bidOrder = bidTreeMap.get(keyPrice).poll();
+                            //break;
+                            BigInteger pendingVolume = orderItemModel.getVolume();//Volume to be sold to asker
+                            PriorityQueue<OrderItemModel> priorityQueue = bidTreeMap.get(keyPrice);
+                            //iterate through OrderItemModels in the PriorityQueue at this Price point
+                            for (int i = 0; i < priorityQueue.size(); i++) {
+                                OrderItemModel bidOrder = bidTreeMap.get(keyPrice).peek();
+                                if (bidOrder == null) {
+                                    continue;
+                                }
+                                //doTransaction
+                                OrderItemModel transaction = new OrderItemModel();
+                                transaction.setAsset(orderItemModel.getAsset());
+                                transaction.setClientId(orderItemModel.getClientId());
+                                if (pendingVolume.compareTo(bidOrder.getVolume()) < 0) {
+                                    //orderItem is asking for less than the bid
+                                    transaction.setVolume(pendingVolume);
+                                    pendingVolume = BigInteger.valueOf(0);
+                                    bidOrder.setVolume(bidOrder.getVolume().subtract(transaction.getVolume()));
+                                    //log.info()
+
+                                }
+
+                            }
                         } catch (Exception e) {
                             log.info("ME Enginge Exception in fetching PQ {}", e.toString());
                         }
