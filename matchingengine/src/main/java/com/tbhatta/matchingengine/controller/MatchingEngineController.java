@@ -1,5 +1,7 @@
 package com.tbhatta.matchingengine.controller;
 
+import com.tbhatta.matchingengine.order_records.service.OrderRecordService;
+import com.tbhatta.matchingengine.order_records.service.TransactionRecordService;
 import com.tbhatta.matchingengine.service.KafkaConsumer;
 import com.tbhatta.matchingengine.service.OrderBook;
 import org.slf4j.Logger;
@@ -7,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -21,10 +24,20 @@ public class MatchingEngineController {
     private static final Logger log = LoggerFactory.getLogger(MatchingEngineController.class);
     private KafkaConsumer kafkaConsumer;
     private OrderBook orderBook;
+    private OrderRecordService orderRecordService;
+    private TransactionRecordService transactionRecordService;
 
-    public MatchingEngineController(KafkaConsumer kafkaConsumer, OrderBook orderBook) {
+//    public MatchingEngineController(KafkaConsumer kafkaConsumer, OrderBook orderBook, OrderRecordService orderRecordService) {
+//        this.kafkaConsumer = kafkaConsumer;
+//        this.orderBook = orderBook;
+//        this.orderRecordService = orderRecordService;
+//    }
+
+    public MatchingEngineController(KafkaConsumer kafkaConsumer, OrderBook orderBook, OrderRecordService orderRecordService, TransactionRecordService transactionRecordService) {
         this.kafkaConsumer = kafkaConsumer;
         this.orderBook = orderBook;
+        this.orderRecordService = orderRecordService;
+        this.transactionRecordService = transactionRecordService;
     }
 
     @GetMapping("/hello")
@@ -79,5 +92,18 @@ public class MatchingEngineController {
         } catch (Exception e) {
             return "Error is gathering info";
         }
+    }
+
+    @GetMapping("/mong/{name}/{detail}")
+    public String saveMong(@PathVariable("name") String name, @PathVariable("detail") String detail) {
+        orderRecordService.saveP(name, detail);
+        return "done";
+
+    }
+
+    @GetMapping("/tranmong/{name}/{detail}")
+    public String saveTran(@PathVariable("name") String name, @PathVariable("detail") String detail) {
+        transactionRecordService.setTransaction_(name, detail);
+        return "done";
     }
 }
