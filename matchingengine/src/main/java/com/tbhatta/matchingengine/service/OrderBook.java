@@ -1,31 +1,17 @@
 package com.tbhatta.matchingengine.service;
 
-import com.mongodb.MongoClientSettings;
-import com.mongodb.MongoCredential;
-import com.mongodb.ServerAddress;
-import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoClients;
-import com.mongodb.client.MongoCollection;
-import com.mongodb.client.MongoDatabase;
 import com.tbhatta.matchingengine.model.TransactionItemModel;
 import com.tbhatta.matchingengine.model.comparator.*;
 import com.tbhatta.matchingengine.order_records.repository.TransactionItemRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Bean;
-import org.springframework.data.mongodb.core.MongoOperations;
-import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.bson.Document;
-import org.bson.types.ObjectId;
 
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.math.RoundingMode;
-import java.math.MathContext;
 import java.util.*;
 
 import com.tbhatta.matchingengine.model.OrderItemModel;
@@ -37,49 +23,45 @@ public class OrderBook {
     public static final String BID = "bid";
     //public PriorityQueue<OrderItemModel> askPQ, bidPQ;
     public TreeMap<BigDecimal, PriorityQueue<OrderItemModel>> bidTreeMap, askTreeMap;
-    public HashMap<String, HashMap<String, TreeMap<BigDecimal, PriorityQueue<OrderItemModel>>>> assetHashMap;
+    public HashMap<String, HashMap<String, TreeMap<BigDecimal, PriorityQueue<OrderItemModel>>>> rootAssetHashMap;
+    @Autowired public TransactionItemRepository transactionItemRepository;
 
     public OrderBook() {
         //askPQ = new PriorityQueue<>(new AskComparatorPrice());
         //bidPQ = new PriorityQueue<>(new BidComparatorPrice());
         bidTreeMap = new TreeMap<>(new BidComparatorPriceBigDecimal());
         askTreeMap = new TreeMap<>(new AskComparatorPriceBigDecimal());
-        assetHashMap = new HashMap<>();
+        rootAssetHashMap = new HashMap<>();
     }
-
-
 
     public void enterOrderItem_(OrderItemModel orderItemModel) {
         try {
             String orderAsset = orderItemModel.getAsset().strip().toLowerCase();
             //check if ask-bid trees exist for that asset
-//            TransactionItemModel mainPartyTransaction = new TransactionItemModel();
-//            TransactionItemModel counterPartyTransaction = new TransactionItemModel();
-//            mainPartyTransaction.setTransactionID(UUID.randomUUID());
-//            mainPartyTransaction.setMainClientID(orderItemModel.getClientId());
-//            tranItemRepo.insert(mainPartyTransaction);//pendingVolume.compareTo(bidOrder.getVolume()) ==
             //if they do not exist, create hashmap
-            if (!assetHashMap.containsKey(orderAsset)) {
+            if (!rootAssetHashMap.containsKey(orderAsset)) {
                 TreeMap<BigDecimal, PriorityQueue<OrderItemModel>> bidTreeMap, askTreeMap;
                 bidTreeMap = new TreeMap<>(new BidComparatorPriceBigDecimal());
                 askTreeMap = new TreeMap<>(new AskComparatorPriceBigDecimal());
                 HashMap<String, TreeMap<BigDecimal, PriorityQueue<OrderItemModel>>> treeMaps = new HashMap<>();
                 treeMaps.put(OrderBook.BID, bidTreeMap);
                 treeMaps.put(OrderBook.ASK, askTreeMap);
-                assetHashMap.put(orderItemModel.getAsset(), treeMaps);
+                rootAssetHashMap.put(orderItemModel.getAsset(), treeMaps);
             }
-            HashMap<String, TreeMap<BigDecimal, PriorityQueue<OrderItemModel>>> assetTreeMap = assetHashMap.get(orderAsset.toLowerCase().strip());
+            HashMap<String, TreeMap<BigDecimal, PriorityQueue<OrderItemModel>>> assetHashMapForTreeMaps = rootAssetHashMap.get(orderAsset.toLowerCase().strip());
             //if they exist, check if bid-tree exists in cse of ask order or vice versa
             BigDecimal orderPrice = orderItemModel.getAmount();
             List<OrderItemModel> transactions = new ArrayList<>();
             if (orderItemModel.getOrderType().strip().equalsIgnoreCase(OrderBook.ASK)) {
                 //Order coming in from the Kafka queue is of an Ask-type
-                bidTreeMap = assetTreeMap.get(OrderBook.BID);
-                Iterator<BigDecimal> keyPricesBidTreeMap = bidTreeMap.keySet().iterator();
-                log.info("ME: Iterator of Bid Prices is {}", iteratorToString(keyPricesBidTreeMap));
+                bidTreeMap = assetHashMapForTreeMaps.get(OrderBook.BID);
+                Iterator<BigDecimal> keyPricesBidTreeMapIterator = bidTreeMap.keySet().iterator();
+                log.info("ME: Iterator of Bid Prices is {}", iteratorToString(keyPricesBidTreeMapIterator));//iterator runs till end here
+                keyPricesBidTreeMapIterator = bidTreeMap.keySet().iterator();//refetch the iterator
+                log.info("ME: Iterator.hasNext() == {}, and pendvol == {}", keyPricesBidTreeMapIterator.hasNext(), orderItemModel.getVolume().compareTo(BigInteger.ZERO) > 0);
                 BigInteger pendingVolume = orderItemModel.getVolume();//Volume to be sold to asker
-                while (keyPricesBidTreeMap.hasNext() && pendingVolume.compareTo(BigInteger.ZERO) > 0) {
-                    BigDecimal keyPrice = keyPricesBidTreeMap.next();
+                while (keyPricesBidTreeMapIterator.hasNext() && pendingVolume.compareTo(BigInteger.ZERO) > 0) {
+                    BigDecimal keyPrice = keyPricesBidTreeMapIterator.next();
                     if (keyPrice.compareTo(orderPrice) >= 0)  {
                         //
                         try {
@@ -103,15 +85,25 @@ public class OrderBook {
                                     pendingVolume = BigInteger.valueOf(0);
                                     bidOrder.setVolume(bidOrder.getVolume().subtract(transaction.getVolume()));
                                     //log.info()
-//                                    TransactionItemModel mainPartyTransaction = new TransactionItemModel();
-//                                    TransactionItemModel counterPartyTransaction = new TransactionItemModel();
-//                                    mainPartyTransaction.setTransactionID(UUID.randomUUID());
-//                                    mainPartyTransaction.setMainClientID(bidOrder.getClientId());
-//                                    tranItemRepo.insert(mainPartyTransaction);
+                                    TransactionItemModel mainPartyTransaction = new TransactionItemModel();
+                                    TransactionItemModel counterPartyTransaction = new TransactionItemModel();
+                                    mainPartyTransaction.setTransactionID(String.valueOf(UUID.randomUUID()));
+                                    mainPartyTransaction.setMainClientID(bidOrder.getClientId());
+                                    transactionItemRepository.insert(mainPartyTransaction);
                                 } else if (pendingVolume.compareTo(bidOrder.getVolume()) > 0) {
+                                    TransactionItemModel mainPartyTransaction = new TransactionItemModel();
+                                    TransactionItemModel counterPartyTransaction = new TransactionItemModel();
+                                    mainPartyTransaction.setTransactionID(String.valueOf(UUID.randomUUID()));
+                                    mainPartyTransaction.setMainClientID(bidOrder.getClientId());
+                                    transactionItemRepository.insert(mainPartyTransaction);
 
 
                                 } else {
+                                    TransactionItemModel mainPartyTransaction = new TransactionItemModel();
+                                    TransactionItemModel counterPartyTransaction = new TransactionItemModel();
+                                    mainPartyTransaction.setTransactionID(String.valueOf(UUID.randomUUID()));
+                                    mainPartyTransaction.setMainClientID(bidOrder.getClientId());
+                                    transactionItemRepository.insert(mainPartyTransaction);
 
 
                                 }
@@ -126,7 +118,7 @@ public class OrderBook {
                 if (pendingVolume.compareTo(BigInteger.ZERO) > 0) {
                     //theres still some volume that has not been met
                     //so create an ASK for the remaining volume
-                    askTreeMap = assetTreeMap.get(OrderBook.ASK);
+                    askTreeMap = assetHashMapForTreeMaps.get(OrderBook.ASK);
                     orderItemModel.setVolume(pendingVolume);
                     if (askTreeMap.containsKey(orderItemModel.getAmount())) {
                         PriorityQueue<OrderItemModel> priorityQueue = askTreeMap.get(orderItemModel.getAmount());
@@ -140,12 +132,14 @@ public class OrderBook {
             } else if (orderItemModel.getOrderType().strip().equalsIgnoreCase(OrderBook.BID)) {
                 //Order coming in from the Kafka queue is of an Bid-type
                 //iterate through all the Ask-Price keyed TreeMaps in the Asset's HashMap
-                askTreeMap = assetTreeMap.get(OrderBook.ASK);
-                Iterator<BigDecimal> keyPricesAskTreeMap = askTreeMap.keySet().iterator();//keys are the Ask prices
-                log.info("ME: Iterator of Ask Prices is {}", iteratorToString(keyPricesAskTreeMap));
+                askTreeMap = assetHashMapForTreeMaps.get(OrderBook.ASK);
+                Iterator<BigDecimal> keyPricesAskTreeMapIterator = askTreeMap.keySet().iterator();//keys are the Ask prices
+                log.info("ME: Iterator of Ask Prices is {}", iteratorToString(keyPricesAskTreeMapIterator));//iterator runs till the end here
+                keyPricesAskTreeMapIterator = askTreeMap.keySet().iterator();//refetch the iterator
+                log.info("ME: Iterator.hasNext() == {}, and pendvol == {}", keyPricesAskTreeMapIterator.hasNext(), orderItemModel.getVolume().compareTo(BigInteger.ZERO) > 0);
                 BigInteger pendingVolume = orderItemModel.getVolume();//volume of sale required in the Bid-Order
-                while (keyPricesAskTreeMap.hasNext() && pendingVolume.compareTo(BigInteger.ZERO) > 0) {
-                    BigDecimal keyPrice = keyPricesAskTreeMap.next();
+                while (keyPricesAskTreeMapIterator.hasNext() && pendingVolume.compareTo(BigInteger.ZERO) > 0) {
+                    BigDecimal keyPrice = keyPricesAskTreeMapIterator.next();
                     if (keyPrice.compareTo(orderPrice) >= 0) {
                         //The Key (price) of the Asks in this node of the TreeMap is
                         //greater than or equalling the Kafka-originated Order's Bid price
@@ -179,7 +173,7 @@ public class OrderBook {
                 if (pendingVolume.compareTo(BigInteger.ZERO) > 0) {
                     //theres still some volume that has not been met
                     //so create an ASK for the remaining volume
-                    bidTreeMap = assetTreeMap.get(OrderBook.BID);
+                    bidTreeMap = assetHashMapForTreeMaps.get(OrderBook.BID);
                     orderItemModel.setVolume(pendingVolume);
                     if (bidTreeMap.containsKey(orderItemModel.getAmount())) {
                         PriorityQueue<OrderItemModel> priorityQueue = bidTreeMap.get(orderItemModel.getAmount());
