@@ -3,7 +3,7 @@ package com.tbhatta.matchingengine.order_records.entity;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-@Document
+@Document(collection = "OrderRecord")
 public class OrderRecord {
 
     @Id public String id;

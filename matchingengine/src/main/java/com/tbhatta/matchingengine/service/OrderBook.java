@@ -24,13 +24,15 @@ public class OrderBook {
     //public PriorityQueue<OrderItemModel> askPQ, bidPQ;
     public TreeMap<BigDecimal, PriorityQueue<OrderItemModel>> bidTreeMap, askTreeMap;
     public HashMap<String, HashMap<String, TreeMap<BigDecimal, PriorityQueue<OrderItemModel>>>> rootAssetHashMap;
-    @Autowired public TransactionItemRepository transactionItemRepository;
+    @Autowired
+    public TransactionItemRepository transactionItemRepository;
 
     public OrderBook() {
         //askPQ = new PriorityQueue<>(new AskComparatorPrice());
         //bidPQ = new PriorityQueue<>(new BidComparatorPrice());
-        bidTreeMap = new TreeMap<>(new BidComparatorPriceBigDecimal());
-        askTreeMap = new TreeMap<>(new AskComparatorPriceBigDecimal());
+        // //
+        //bidTreeMap = new TreeMap<>(new BidComparatorPriceBigDecimal());
+        //askTreeMap = new TreeMap<>(new AskComparatorPriceBigDecimal());
         rootAssetHashMap = new HashMap<>();
     }
 
@@ -54,7 +56,7 @@ public class OrderBook {
             List<OrderItemModel> transactions = new ArrayList<>();
             if (orderItemModel.getOrderType().strip().equalsIgnoreCase(OrderBook.ASK)) {
                 //Order coming in from the Kafka queue is of an Ask-type
-                bidTreeMap = assetHashMapForTreeMaps.get(OrderBook.BID);
+                TreeMap<BigDecimal, PriorityQueue<OrderItemModel>> bidTreeMap = assetHashMapForTreeMaps.get(OrderBook.BID);
                 Iterator<BigDecimal> keyPricesBidTreeMapIterator = bidTreeMap.keySet().iterator();
                 log.info("ME: Iterator of Bid Prices is {}", iteratorToString(keyPricesBidTreeMapIterator));//iterator runs till end here
                 keyPricesBidTreeMapIterator = bidTreeMap.keySet().iterator();//refetch the iterator
@@ -62,63 +64,131 @@ public class OrderBook {
                 BigInteger pendingVolume = orderItemModel.getVolume();//Volume to be sold to asker
                 while (keyPricesBidTreeMapIterator.hasNext() && pendingVolume.compareTo(BigInteger.ZERO) > 0) {
                     BigDecimal keyPrice = keyPricesBidTreeMapIterator.next();
-                    if (keyPrice.compareTo(orderPrice) >= 0)  {
-                        //
+                    if (keyPrice.compareTo(orderPrice) >= 0) {
+                        //Bid-Amount >= Ask-Amount, thus transaction is possible
                         try {
                             //OrderItemModel bidOrder = bidTreeMap.get(keyPrice).peek();
                             //bidOrder = bidTreeMap.get(keyPrice).poll();
                             //break;
                             PriorityQueue<OrderItemModel> priorityQueue = bidTreeMap.get(keyPrice);
                             //iterate through OrderItemModels in the PriorityQueue at this Price point
-                            for (int i = 0; i < priorityQueue.size(); i++) {
-                                OrderItemModel bidOrder = bidTreeMap.get(keyPrice).poll();
-                                if (bidOrder == null) {
+                            ArrayList<OrderItemModel> itemsRemovedFromPriorityQueue = new ArrayList<>();//for later re-insertion
+                            int numItemsInPriorityQueue = priorityQueue.size();
+                            for (int i = 0; i < numItemsInPriorityQueue; i++) {
+                                if (priorityQueue.peek().getClientId().strip().equalsIgnoreCase(orderItemModel.getClientId().strip())) {
+                                    //Don't match between bid and ask requests of the same client
                                     continue;
                                 }
-                                //doTransaction
-                                OrderItemModel transaction = new OrderItemModel();
-                                transaction.setAsset(orderItemModel.getAsset());
-                                transaction.setClientId(orderItemModel.getClientId());
-                                if (pendingVolume.compareTo(bidOrder.getVolume()) < 0) {
-                                    //orderItem is asking for less than the bid - sale possible
-                                    transaction.setVolume(pendingVolume);
-                                    pendingVolume = BigInteger.valueOf(0);
-                                    bidOrder.setVolume(bidOrder.getVolume().subtract(transaction.getVolume()));
-                                    //log.info()
-                                    TransactionItemModel mainPartyTransaction = new TransactionItemModel();
-                                    TransactionItemModel counterPartyTransaction = new TransactionItemModel();
-                                    mainPartyTransaction.setTransactionID(String.valueOf(UUID.randomUUID()));
-                                    mainPartyTransaction.setMainClientID(bidOrder.getClientId());
-                                    transactionItemRepository.insert(mainPartyTransaction);
-                                } else if (pendingVolume.compareTo(bidOrder.getVolume()) > 0) {
-                                    TransactionItemModel mainPartyTransaction = new TransactionItemModel();
-                                    TransactionItemModel counterPartyTransaction = new TransactionItemModel();
-                                    mainPartyTransaction.setTransactionID(String.valueOf(UUID.randomUUID()));
-                                    mainPartyTransaction.setMainClientID(bidOrder.getClientId());
-                                    transactionItemRepository.insert(mainPartyTransaction);
-
-
-                                } else {
-                                    TransactionItemModel mainPartyTransaction = new TransactionItemModel();
-                                    TransactionItemModel counterPartyTransaction = new TransactionItemModel();
-                                    mainPartyTransaction.setTransactionID(String.valueOf(UUID.randomUUID()));
-                                    mainPartyTransaction.setMainClientID(bidOrder.getClientId());
-                                    transactionItemRepository.insert(mainPartyTransaction);
-
-
+                                OrderItemModel bidOrder = priorityQueue.poll();//bidTreeMap.get(keyPrice).poll();
+                                if (bidOrder == null) {
+                                    //shouldn't be necessary as PriorityQueues don't accept null elements
+                                    continue;
                                 }
-                            }
+                                if (pendingVolume.compareTo(bidOrder.getVolume()) < 0) {
+                                    BigInteger transactionVolume = new BigInteger(String.valueOf(pendingVolume));
+                                    bidOrder.setVolume(bidOrder.getVolume().subtract(pendingVolume));
+                                    pendingVolume = BigInteger.valueOf(0);
+                                    //main-party is from kafka, so orderItemModel
+                                    //counter-party is from bidTree, so bidOrder
+                                    //make transaction record (for mongodb insertion) for the order coming in from kafka
+                                    TransactionItemModel mainPartyTransaction = new TransactionItemModel();
+                                    mainPartyTransaction.setTransactionID(String.valueOf(UUID.randomUUID()));
+                                    mainPartyTransaction.setMainClientID(orderItemModel.getClientId());
+                                    mainPartyTransaction.setCounterPartyID(bidOrder.getClientId());
+                                    mainPartyTransaction.setMainclientOrderId(orderItemModel.getOrderId().toString());
+                                    mainPartyTransaction.setCounterPartOrderId(bidOrder.getOrderId().toString());
+                                    mainPartyTransaction.setMainClientOrderType(orderItemModel.getOrderType());//
+                                    mainPartyTransaction.setMainClientTransactionAmount(orderItemModel.getAmount());
+                                    mainPartyTransaction.setSpreadAmount(bidOrder.getAmount().subtract(orderItemModel.getAmount()));
+                                    //make transaction record (for mongodb insertion) for the bid order from bid-tree in memory
+                                    TransactionItemModel counterPartyTransaction = new TransactionItemModel();
+                                    counterPartyTransaction.setTransactionID(String.valueOf(UUID.randomUUID()));
+                                    counterPartyTransaction.setMainClientID(bidOrder.getClientId());
+                                    counterPartyTransaction.setCounterPartyID(orderItemModel.getClientId());
+                                    counterPartyTransaction.setMainclientOrderId(bidOrder.getOrderId().toString());
+                                    counterPartyTransaction.setCounterPartOrderId(orderItemModel.getOrderId().toString());
+                                    counterPartyTransaction.setMainClientOrderType(bidOrder.getOrderType());
+                                    counterPartyTransaction.setMainClientTransactionAmount(bidOrder.getAmount());
+                                    counterPartyTransaction.setSpreadAmount(orderItemModel.getAmount().subtract(bidOrder.getAmount()));
+                                    //save in mongodb
+                                    transactionItemRepository.insert(mainPartyTransaction);
+                                    transactionItemRepository.insert(counterPartyTransaction);
+                                    //since there's still some volume left in bidOrder put iit in ArrayList for re-insertion
+                                    itemsRemovedFromPriorityQueue.add(bidOrder);
+
+                                } else if (pendingVolume.compareTo(bidOrder.getVolume()) > 0) {
+                                    BigInteger transactionVolume = new BigInteger(String.valueOf(pendingVolume));
+                                    pendingVolume = new BigInteger(bidOrder.getVolume().subtract(pendingVolume).toString());
+                                    bidOrder.setVolume(BigInteger.valueOf(0));
+                                    //main-party is from kafka, so orderItemModel
+                                    //counter-party is from bidTree, so bidOrder
+                                    //make transaction record (for mongodb insertion) for the order coming in from kafka
+                                    TransactionItemModel mainPartyTransaction = new TransactionItemModel();
+                                    mainPartyTransaction.setTransactionID(String.valueOf(UUID.randomUUID()));
+                                    mainPartyTransaction.setMainClientID(orderItemModel.getClientId());
+                                    mainPartyTransaction.setCounterPartyID(bidOrder.getClientId());
+                                    mainPartyTransaction.setMainclientOrderId(orderItemModel.getOrderId().toString());
+                                    mainPartyTransaction.setCounterPartOrderId(bidOrder.getOrderId().toString());
+                                    mainPartyTransaction.setMainClientOrderType(orderItemModel.getOrderType());//
+                                    mainPartyTransaction.setMainClientTransactionAmount(orderItemModel.getAmount());
+                                    mainPartyTransaction.setSpreadAmount(bidOrder.getAmount().subtract(orderItemModel.getAmount()));
+                                    //make transaction record (for mongodb insertion) for the bid order from bid-tree in memory
+                                    TransactionItemModel counterPartyTransaction = new TransactionItemModel();
+                                    counterPartyTransaction.setTransactionID(String.valueOf(UUID.randomUUID()));
+                                    counterPartyTransaction.setMainClientID(bidOrder.getClientId());
+                                    counterPartyTransaction.setCounterPartyID(orderItemModel.getClientId());
+                                    counterPartyTransaction.setMainclientOrderId(bidOrder.getOrderId().toString());
+                                    counterPartyTransaction.setCounterPartOrderId(orderItemModel.getOrderId().toString());
+                                    counterPartyTransaction.setMainClientOrderType(bidOrder.getOrderType());
+                                    counterPartyTransaction.setMainClientTransactionAmount(bidOrder.getAmount());
+                                    counterPartyTransaction.setSpreadAmount(orderItemModel.getAmount().subtract(bidOrder.getAmount()));
+                                    //save in mongodb
+                                    transactionItemRepository.insert(mainPartyTransaction);
+                                    transactionItemRepository.insert(counterPartyTransaction);
+                                } else {
+                                    //pendingVolume == bibOrderVolue
+                                    BigInteger transactionVolume = new BigInteger(String.valueOf(pendingVolume));
+                                    pendingVolume = BigInteger.valueOf(0);
+                                    bidOrder.setVolume(BigInteger.valueOf(0));
+                                    //main-party is from kafka, so orderItemModel
+                                    //counter-party is from bidTree, so bidOrder
+                                    //make transaction record (for mongodb insertion) for the order coming in from kafka
+                                    TransactionItemModel mainPartyTransaction = new TransactionItemModel();
+                                    mainPartyTransaction.setTransactionID(String.valueOf(UUID.randomUUID()));
+                                    mainPartyTransaction.setMainClientID(orderItemModel.getClientId());
+                                    mainPartyTransaction.setCounterPartyID(bidOrder.getClientId());
+                                    mainPartyTransaction.setMainclientOrderId(orderItemModel.getOrderId().toString());
+                                    mainPartyTransaction.setCounterPartOrderId(bidOrder.getOrderId().toString());
+                                    mainPartyTransaction.setMainClientOrderType(orderItemModel.getOrderType());//
+                                    mainPartyTransaction.setMainClientTransactionAmount(orderItemModel.getAmount());
+                                    mainPartyTransaction.setSpreadAmount(bidOrder.getAmount().subtract(orderItemModel.getAmount()));
+                                    //make transaction record (for mongodb insertion) for the bid order from bid-tree in memory
+                                    TransactionItemModel counterPartyTransaction = new TransactionItemModel();
+                                    counterPartyTransaction.setTransactionID(String.valueOf(UUID.randomUUID()));
+                                    counterPartyTransaction.setMainClientID(bidOrder.getClientId());
+                                    counterPartyTransaction.setCounterPartyID(orderItemModel.getClientId());
+                                    counterPartyTransaction.setMainclientOrderId(bidOrder.getOrderId().toString());
+                                    counterPartyTransaction.setCounterPartOrderId(orderItemModel.getOrderId().toString());
+                                    counterPartyTransaction.setMainClientOrderType(bidOrder.getOrderType());
+                                    counterPartyTransaction.setMainClientTransactionAmount(bidOrder.getAmount());
+                                    counterPartyTransaction.setSpreadAmount(orderItemModel.getAmount().subtract(bidOrder.getAmount()));
+                                    //save in mongodb
+                                    transactionItemRepository.insert(mainPartyTransaction);
+                                    transactionItemRepository.insert(counterPartyTransaction);
+                                }
+                            }//end of iteration through PriorityQueue
+                            priorityQueue.addAll(itemsRemovedFromPriorityQueue);//
+                            itemsRemovedFromPriorityQueue = null;
+
                         } catch (Exception e) {
                             log.info("ME Enginge Exception in fetching PQ {}", e.toString());
                         }
-                    } else {
-
                     }
-                } //end of loop through all current BID-TreeMaps in the asset's Hashmap
+                } //end of iteration through each BigDecial-key of Bid-TreeMap
                 if (pendingVolume.compareTo(BigInteger.ZERO) > 0) {
                     //theres still some volume that has not been met
                     //so create an ASK for the remaining volume
-                    askTreeMap = assetHashMapForTreeMaps.get(OrderBook.ASK);
+                    TreeMap<BigDecimal, PriorityQueue<OrderItemModel>> askTreeMap = assetHashMapForTreeMaps.get(OrderBook.ASK);
                     orderItemModel.setVolume(pendingVolume);
                     if (askTreeMap.containsKey(orderItemModel.getAmount())) {
                         PriorityQueue<OrderItemModel> priorityQueue = askTreeMap.get(orderItemModel.getAmount());
@@ -132,7 +202,7 @@ public class OrderBook {
             } else if (orderItemModel.getOrderType().strip().equalsIgnoreCase(OrderBook.BID)) {
                 //Order coming in from the Kafka queue is of an Bid-type
                 //iterate through all the Ask-Price keyed TreeMaps in the Asset's HashMap
-                askTreeMap = assetHashMapForTreeMaps.get(OrderBook.ASK);
+                TreeMap<BigDecimal, PriorityQueue<OrderItemModel>> askTreeMap = assetHashMapForTreeMaps.get(OrderBook.ASK);
                 Iterator<BigDecimal> keyPricesAskTreeMapIterator = askTreeMap.keySet().iterator();//keys are the Ask prices
                 log.info("ME: Iterator of Ask Prices is {}", iteratorToString(keyPricesAskTreeMapIterator));//iterator runs till the end here
                 keyPricesAskTreeMapIterator = askTreeMap.keySet().iterator();//refetch the iterator
@@ -140,31 +210,117 @@ public class OrderBook {
                 BigInteger pendingVolume = orderItemModel.getVolume();//volume of sale required in the Bid-Order
                 while (keyPricesAskTreeMapIterator.hasNext() && pendingVolume.compareTo(BigInteger.ZERO) > 0) {
                     BigDecimal keyPrice = keyPricesAskTreeMapIterator.next();
-                    if (keyPrice.compareTo(orderPrice) >= 0) {
-                        //The Key (price) of the Asks in this node of the TreeMap is
-                        //greater than or equalling the Kafka-originated Order's Bid price
-                        //thus a sale is possible
+                    if (keyPrice.compareTo(orderPrice) <= 0) {
                         try {
-                            //get the priority-queue of all ask-orders set as value for the key-price
-                            //in the TreeMap, the priority-queue orders are arranged according to time
                             PriorityQueue<OrderItemModel> priorityQueue = askTreeMap.get(keyPrice);
-                            for (int i = 0; i < priorityQueue.size(); i++) {
-                                OrderItemModel askOrder = askTreeMap.get(keyPrice).peek();//glance without removing
-                                if (askOrder == null) {
+                            //iterate through OrderItemModels in the PriorityQueue at this Price point
+                            ArrayList<OrderItemModel> itemsRemovedFromPriorityQueue = new ArrayList<>();//for later re-insertion
+                            int numItemsInPriorityQueue = priorityQueue.size();
+                            for (int i = 0; i < numItemsInPriorityQueue; i++) {
+                                if (priorityQueue.peek().getClientId().strip().equalsIgnoreCase(orderItemModel.getClientId().strip())) {
+                                    //Don't match between bid and ask requests of the same client
                                     continue;
                                 }
-                                //doTransaction
-                                OrderItemModel transaction = new OrderItemModel();
-                                transaction.setAsset(orderItemModel.getAsset());
-                                transaction.setClientId(orderItemModel.getClientId());
-                                if (pendingVolume.compareTo(askOrder.getVolume()) <= 0) {
-                                    //
-                                    transaction.setVolume(pendingVolume);
+                                OrderItemModel askOrder = priorityQueue.poll();//bidTreeMap.get(keyPrice).poll();
+                                if (askOrder == null) {
+                                    //shouldn't be necessary as PriorityQueues don't accept null elements
+                                    continue;
+                                }
+                                if (pendingVolume.compareTo(askOrder.getVolume()) < 0) {
+                                    BigInteger transactionVolume = new BigInteger(String.valueOf(pendingVolume));
+                                    askOrder.setVolume(askOrder.getVolume().subtract(pendingVolume));
                                     pendingVolume = BigInteger.valueOf(0);
-                                    askOrder.setVolume(askOrder.getVolume().subtract(transaction.getVolume()));
-                                    log.info("Transaction Done: {}", askOrder.toString());
+                                    //main-party is from kafka, so orderItemModel
+                                    //counter-party is from bidTree, so bidOrder
+                                    //make transaction record (for mongodb insertion) for the order coming in from kafka
+                                    TransactionItemModel mainPartyTransaction = new TransactionItemModel();
+                                    mainPartyTransaction.setTransactionID(String.valueOf(UUID.randomUUID()));
+                                    mainPartyTransaction.setMainClientID(orderItemModel.getClientId());
+                                    mainPartyTransaction.setCounterPartyID(askOrder.getClientId());
+                                    mainPartyTransaction.setMainclientOrderId(orderItemModel.getOrderId().toString());
+                                    mainPartyTransaction.setCounterPartOrderId(askOrder.getOrderId().toString());
+                                    mainPartyTransaction.setMainClientOrderType(orderItemModel.getOrderType());//
+                                    mainPartyTransaction.setMainClientTransactionAmount(orderItemModel.getAmount());
+                                    mainPartyTransaction.setSpreadAmount(askOrder.getAmount().subtract(orderItemModel.getAmount()));
+                                    //make transaction record (for mongodb insertion) for the bid order from bid-tree in memory
+                                    TransactionItemModel counterPartyTransaction = new TransactionItemModel();
+                                    counterPartyTransaction.setTransactionID(String.valueOf(UUID.randomUUID()));
+                                    counterPartyTransaction.setMainClientID(askOrder.getClientId());
+                                    counterPartyTransaction.setCounterPartyID(orderItemModel.getClientId());
+                                    counterPartyTransaction.setMainclientOrderId(askOrder.getOrderId().toString());
+                                    counterPartyTransaction.setCounterPartOrderId(orderItemModel.getOrderId().toString());
+                                    counterPartyTransaction.setMainClientOrderType(askOrder.getOrderType());
+                                    counterPartyTransaction.setMainClientTransactionAmount(askOrder.getAmount());
+                                    counterPartyTransaction.setSpreadAmount(orderItemModel.getAmount().subtract(askOrder.getAmount()));
+                                    //save in mongodb
+                                    transactionItemRepository.insert(mainPartyTransaction);
+                                    transactionItemRepository.insert(counterPartyTransaction);
+                                    //since there's still some volume left in bidOrder put iit in ArrayList for re-insertion
+                                    itemsRemovedFromPriorityQueue.add(askOrder);
+                                } else if (pendingVolume.compareTo(askOrder.getVolume()) > 0) {
+                                    BigInteger transactionVolume = new BigInteger(String.valueOf(pendingVolume));
+                                    pendingVolume = new BigInteger(askOrder.getVolume().subtract(pendingVolume).toString());
+                                    askOrder.setVolume(BigInteger.valueOf(0));
+                                    //main-party is from kafka, so orderItemModel
+                                    //counter-party is from bidTree, so bidOrder
+                                    //make transaction record (for mongodb insertion) for the order coming in from kafka
+                                    TransactionItemModel mainPartyTransaction = new TransactionItemModel();
+                                    mainPartyTransaction.setTransactionID(String.valueOf(UUID.randomUUID()));
+                                    mainPartyTransaction.setMainClientID(orderItemModel.getClientId());
+                                    mainPartyTransaction.setCounterPartyID(askOrder.getClientId());
+                                    mainPartyTransaction.setMainclientOrderId(orderItemModel.getOrderId().toString());
+                                    mainPartyTransaction.setCounterPartOrderId(askOrder.getOrderId().toString());
+                                    mainPartyTransaction.setMainClientOrderType(orderItemModel.getOrderType());//
+                                    mainPartyTransaction.setMainClientTransactionAmount(orderItemModel.getAmount());
+                                    mainPartyTransaction.setSpreadAmount(askOrder.getAmount().subtract(orderItemModel.getAmount()));
+                                    //make transaction record (for mongodb insertion) for the bid order from bid-tree in memory
+                                    TransactionItemModel counterPartyTransaction = new TransactionItemModel();
+                                    counterPartyTransaction.setTransactionID(String.valueOf(UUID.randomUUID()));
+                                    counterPartyTransaction.setMainClientID(askOrder.getClientId());
+                                    counterPartyTransaction.setCounterPartyID(orderItemModel.getClientId());
+                                    counterPartyTransaction.setMainclientOrderId(askOrder.getOrderId().toString());
+                                    counterPartyTransaction.setCounterPartOrderId(orderItemModel.getOrderId().toString());
+                                    counterPartyTransaction.setMainClientOrderType(askOrder.getOrderType());
+                                    counterPartyTransaction.setMainClientTransactionAmount(askOrder.getAmount());
+                                    counterPartyTransaction.setSpreadAmount(orderItemModel.getAmount().subtract(askOrder.getAmount()));
+                                    //save in mongodb
+                                    transactionItemRepository.insert(mainPartyTransaction);
+                                    transactionItemRepository.insert(counterPartyTransaction);
+
+                                } else { //pendingVolume == askOrder.getVolume())
+                                    BigInteger transactionVolume = new BigInteger(String.valueOf(pendingVolume));
+                                    pendingVolume = BigInteger.valueOf(0);
+                                    askOrder.setVolume(BigInteger.valueOf(0));
+                                    //main-party is from kafka, so orderItemModel
+                                    //counter-party is from bidTree, so bidOrder
+                                    //make transaction record (for mongodb insertion) for the order coming in from kafka
+                                    TransactionItemModel mainPartyTransaction = new TransactionItemModel();
+                                    mainPartyTransaction.setTransactionID(String.valueOf(UUID.randomUUID()));
+                                    mainPartyTransaction.setMainClientID(orderItemModel.getClientId());
+                                    mainPartyTransaction.setCounterPartyID(askOrder.getClientId());
+                                    mainPartyTransaction.setMainclientOrderId(orderItemModel.getOrderId().toString());
+                                    mainPartyTransaction.setCounterPartOrderId(askOrder.getOrderId().toString());
+                                    mainPartyTransaction.setMainClientOrderType(orderItemModel.getOrderType());//
+                                    mainPartyTransaction.setMainClientTransactionAmount(orderItemModel.getAmount());
+                                    mainPartyTransaction.setSpreadAmount(askOrder.getAmount().subtract(orderItemModel.getAmount()));
+                                    //make transaction record (for mongodb insertion) for the bid order from bid-tree in memory
+                                    TransactionItemModel counterPartyTransaction = new TransactionItemModel();
+                                    counterPartyTransaction.setTransactionID(String.valueOf(UUID.randomUUID()));
+                                    counterPartyTransaction.setMainClientID(askOrder.getClientId());
+                                    counterPartyTransaction.setCounterPartyID(orderItemModel.getClientId());
+                                    counterPartyTransaction.setMainclientOrderId(askOrder.getOrderId().toString());
+                                    counterPartyTransaction.setCounterPartOrderId(orderItemModel.getOrderId().toString());
+                                    counterPartyTransaction.setMainClientOrderType(askOrder.getOrderType());
+                                    counterPartyTransaction.setMainClientTransactionAmount(askOrder.getAmount());
+                                    counterPartyTransaction.setSpreadAmount(orderItemModel.getAmount().subtract(askOrder.getAmount()));
+                                    //save in mongodb
+                                    transactionItemRepository.insert(mainPartyTransaction);
+                                    transactionItemRepository.insert(counterPartyTransaction);
                                 }
                             }
+                            priorityQueue.addAll(itemsRemovedFromPriorityQueue);//
+                            itemsRemovedFromPriorityQueue = null;
+
                         } catch (Exception e) {
                             log.error(e.toString());
                         }
@@ -184,7 +340,6 @@ public class OrderBook {
                         bidTreeMap.put(orderItemModel.getAmount(), priorityQueue);
                     }
                 }
-
 
             } else {
                 //illegal OrderType - must be bid or ask, but is neither
@@ -210,6 +365,21 @@ public class OrderBook {
     }
 
 
+    public TreeMap<BigDecimal, PriorityQueue<OrderItemModel>> getBidTreeByAsset(String assetTicker) {
+        HashMap<String, TreeMap<BigDecimal, PriorityQueue<OrderItemModel>>> assetMaps = rootAssetHashMap.get(assetTicker);
+        return assetMaps.get(OrderBook.BID);
+    }
+
+    public TreeMap<BigDecimal, PriorityQueue<OrderItemModel>> getAskTreeByAsset(String assetTicker) {
+        HashMap<String, TreeMap<BigDecimal, PriorityQueue<OrderItemModel>>> assetMaps = rootAssetHashMap.get(assetTicker);
+        return assetMaps.get(OrderBook.ASK);
+    }
+
+
+
+
+
+    /// //////////////////////////////////
     public void enterOrderItem(OrderItemModel orderItemModel) {
         BigDecimal price = orderItemModel.getAmount();
         if (orderItemModel.getOrderType().toLowerCase().strip().equals("bid")) {
@@ -221,7 +391,7 @@ public class OrderBook {
                 bidPriorityQueue.add(orderItemModel);
                 bidTreeMap.put(price, bidPriorityQueue);
             }
-        } else if (orderItemModel.getOrderType().toLowerCase().strip().equals("ask")){
+        } else if (orderItemModel.getOrderType().toLowerCase().strip().equals("ask")) {
             if (askTreeMap.containsKey(price)) {
                 PriorityQueue<OrderItemModel> pQ = askTreeMap.get(price);
                 pQ.add(orderItemModel);
@@ -289,8 +459,6 @@ public class OrderBook {
             return "PriorityQueue for this Price does not exist";
         }
     }
-
-
 
 
 }

@@ -1,5 +1,7 @@
 package com.tbhatta.matchingengine.controller;
 
+import com.tbhatta.matchingengine.model.OrderItemModel;
+import com.tbhatta.matchingengine.model.TransactionItemModel;
 import com.tbhatta.matchingengine.order_records.service.OrderRecordService;
 import com.tbhatta.matchingengine.order_records.service.TransactionRecordService;
 import com.tbhatta.matchingengine.service.KafkaConsumer;
@@ -8,18 +10,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.PriorityQueue;
+import java.util.TreeMap;
 
 @RestController
-//@RequestMapping("/check")
+@CrossOrigin
 public class MatchingEngineController {
     private static final Logger log = LoggerFactory.getLogger(MatchingEngineController.class);
     private KafkaConsumer kafkaConsumer;
@@ -94,6 +96,16 @@ public class MatchingEngineController {
         }
     }
 
+    @GetMapping("/bid-treemap/{asset}")
+    public TreeMap<BigDecimal, PriorityQueue<OrderItemModel>> getBidTreeMapByAsset(@PathVariable("asset") String asset) {
+        return orderBook.getBidTreeByAsset(asset);
+    }
+
+    @GetMapping("/ask-treemap/{asset}")
+    public TreeMap<BigDecimal, PriorityQueue<OrderItemModel>> getAskTreeMapByAsset(@PathVariable("asset") String asset) {
+        return orderBook.getAskTreeByAsset(asset);
+    }
+
     @GetMapping("/mong/{name}/{detail}")
     public String saveMong(@PathVariable("name") String name, @PathVariable("detail") String detail) {
         orderRecordService.saveP(name, detail);
@@ -106,4 +118,22 @@ public class MatchingEngineController {
         transactionRecordService.setTransaction_(name, detail);
         return "done";
     }
+
+    //getRecordsByClientID
+    @GetMapping("/transactions/clientId/{clientID}")
+    public List<TransactionItemModel> getTransactionsByClient(@PathVariable("clientID") String clientID) {
+        return transactionRecordService.getRecordsByClientID(clientID);
+    }
+
+    //getRecordsByClientID
+    @GetMapping("/transactions/transactionId/{transactionId}")
+    public List<TransactionItemModel> getTransactionsByTransactionId(@PathVariable("transactionId") String transactionId) {
+        return transactionRecordService.getRecordsByTransactionID(transactionId);
+    }
+
+    @GetMapping("/transactions/mainClientOrderId/{mainClientOrderId}")
+    public List<TransactionItemModel> getTransactionsByMainclientOrderID(@PathVariable("mainClientOrderId") String mainClientOrderId) {
+        return transactionRecordService.getRecordsByMainclientOrderID(mainClientOrderId);
+    }
+
 }
