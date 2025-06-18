@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import com.tbhatta.matchingengine.model.OrderItemModel;
 
@@ -96,20 +97,22 @@ public class OrderBook {
                                     mainPartyTransaction.setMainClientID(orderItemModel.getClientId());
                                     mainPartyTransaction.setCounterPartyID(bidOrder.getClientId());
                                     mainPartyTransaction.setMainclientOrderId(orderItemModel.getOrderId().toString());
-                                    mainPartyTransaction.setCounterPartOrderId(bidOrder.getOrderId().toString());
+                                    mainPartyTransaction.setCounterPartyOrderId(bidOrder.getOrderId().toString());
                                     mainPartyTransaction.setMainClientOrderType(orderItemModel.getOrderType());//
                                     mainPartyTransaction.setMainClientTransactionAmount(orderItemModel.getAmount());
                                     mainPartyTransaction.setSpreadAmount(bidOrder.getAmount().subtract(orderItemModel.getAmount()));
+                                    mainPartyTransaction.setTransactionVolume(transactionVolume);
                                     //make transaction record (for mongodb insertion) for the bid order from bid-tree in memory
                                     TransactionItemModel counterPartyTransaction = new TransactionItemModel();
                                     counterPartyTransaction.setTransactionID(String.valueOf(UUID.randomUUID()));
                                     counterPartyTransaction.setMainClientID(bidOrder.getClientId());
                                     counterPartyTransaction.setCounterPartyID(orderItemModel.getClientId());
                                     counterPartyTransaction.setMainclientOrderId(bidOrder.getOrderId().toString());
-                                    counterPartyTransaction.setCounterPartOrderId(orderItemModel.getOrderId().toString());
+                                    counterPartyTransaction.setCounterPartyOrderId(orderItemModel.getOrderId().toString());
                                     counterPartyTransaction.setMainClientOrderType(bidOrder.getOrderType());
                                     counterPartyTransaction.setMainClientTransactionAmount(bidOrder.getAmount());
                                     counterPartyTransaction.setSpreadAmount(orderItemModel.getAmount().subtract(bidOrder.getAmount()));
+                                    counterPartyTransaction.setTransactionVolume(transactionVolume);
                                     //save in mongodb
                                     transactionItemRepository.insert(mainPartyTransaction);
                                     transactionItemRepository.insert(counterPartyTransaction);
@@ -128,20 +131,22 @@ public class OrderBook {
                                     mainPartyTransaction.setMainClientID(orderItemModel.getClientId());
                                     mainPartyTransaction.setCounterPartyID(bidOrder.getClientId());
                                     mainPartyTransaction.setMainclientOrderId(orderItemModel.getOrderId().toString());
-                                    mainPartyTransaction.setCounterPartOrderId(bidOrder.getOrderId().toString());
+                                    mainPartyTransaction.setCounterPartyOrderId(bidOrder.getOrderId().toString());
                                     mainPartyTransaction.setMainClientOrderType(orderItemModel.getOrderType());//
                                     mainPartyTransaction.setMainClientTransactionAmount(orderItemModel.getAmount());
                                     mainPartyTransaction.setSpreadAmount(bidOrder.getAmount().subtract(orderItemModel.getAmount()));
+                                    mainPartyTransaction.setTransactionVolume(transactionVolume);
                                     //make transaction record (for mongodb insertion) for the bid order from bid-tree in memory
                                     TransactionItemModel counterPartyTransaction = new TransactionItemModel();
                                     counterPartyTransaction.setTransactionID(String.valueOf(UUID.randomUUID()));
                                     counterPartyTransaction.setMainClientID(bidOrder.getClientId());
                                     counterPartyTransaction.setCounterPartyID(orderItemModel.getClientId());
                                     counterPartyTransaction.setMainclientOrderId(bidOrder.getOrderId().toString());
-                                    counterPartyTransaction.setCounterPartOrderId(orderItemModel.getOrderId().toString());
+                                    counterPartyTransaction.setCounterPartyOrderId(orderItemModel.getOrderId().toString());
                                     counterPartyTransaction.setMainClientOrderType(bidOrder.getOrderType());
                                     counterPartyTransaction.setMainClientTransactionAmount(bidOrder.getAmount());
                                     counterPartyTransaction.setSpreadAmount(orderItemModel.getAmount().subtract(bidOrder.getAmount()));
+                                    counterPartyTransaction.setTransactionVolume(transactionVolume);
                                     //save in mongodb
                                     transactionItemRepository.insert(mainPartyTransaction);
                                     transactionItemRepository.insert(counterPartyTransaction);
@@ -158,20 +163,22 @@ public class OrderBook {
                                     mainPartyTransaction.setMainClientID(orderItemModel.getClientId());
                                     mainPartyTransaction.setCounterPartyID(bidOrder.getClientId());
                                     mainPartyTransaction.setMainclientOrderId(orderItemModel.getOrderId().toString());
-                                    mainPartyTransaction.setCounterPartOrderId(bidOrder.getOrderId().toString());
+                                    mainPartyTransaction.setCounterPartyOrderId(bidOrder.getOrderId().toString());
                                     mainPartyTransaction.setMainClientOrderType(orderItemModel.getOrderType());//
                                     mainPartyTransaction.setMainClientTransactionAmount(orderItemModel.getAmount());
                                     mainPartyTransaction.setSpreadAmount(bidOrder.getAmount().subtract(orderItemModel.getAmount()));
+                                    mainPartyTransaction.setTransactionVolume(transactionVolume);
                                     //make transaction record (for mongodb insertion) for the bid order from bid-tree in memory
                                     TransactionItemModel counterPartyTransaction = new TransactionItemModel();
                                     counterPartyTransaction.setTransactionID(String.valueOf(UUID.randomUUID()));
                                     counterPartyTransaction.setMainClientID(bidOrder.getClientId());
                                     counterPartyTransaction.setCounterPartyID(orderItemModel.getClientId());
                                     counterPartyTransaction.setMainclientOrderId(bidOrder.getOrderId().toString());
-                                    counterPartyTransaction.setCounterPartOrderId(orderItemModel.getOrderId().toString());
+                                    counterPartyTransaction.setCounterPartyOrderId(orderItemModel.getOrderId().toString());
                                     counterPartyTransaction.setMainClientOrderType(bidOrder.getOrderType());
                                     counterPartyTransaction.setMainClientTransactionAmount(bidOrder.getAmount());
                                     counterPartyTransaction.setSpreadAmount(orderItemModel.getAmount().subtract(bidOrder.getAmount()));
+                                    counterPartyTransaction.setTransactionVolume(transactionVolume);
                                     //save in mongodb
                                     transactionItemRepository.insert(mainPartyTransaction);
                                     transactionItemRepository.insert(counterPartyTransaction);
@@ -238,20 +245,22 @@ public class OrderBook {
                                     mainPartyTransaction.setMainClientID(orderItemModel.getClientId());
                                     mainPartyTransaction.setCounterPartyID(askOrder.getClientId());
                                     mainPartyTransaction.setMainclientOrderId(orderItemModel.getOrderId().toString());
-                                    mainPartyTransaction.setCounterPartOrderId(askOrder.getOrderId().toString());
+                                    mainPartyTransaction.setCounterPartyOrderId(askOrder.getOrderId().toString());
                                     mainPartyTransaction.setMainClientOrderType(orderItemModel.getOrderType());//
                                     mainPartyTransaction.setMainClientTransactionAmount(orderItemModel.getAmount());
                                     mainPartyTransaction.setSpreadAmount(askOrder.getAmount().subtract(orderItemModel.getAmount()));
+                                    mainPartyTransaction.setTransactionVolume(transactionVolume);
                                     //make transaction record (for mongodb insertion) for the bid order from bid-tree in memory
                                     TransactionItemModel counterPartyTransaction = new TransactionItemModel();
                                     counterPartyTransaction.setTransactionID(String.valueOf(UUID.randomUUID()));
                                     counterPartyTransaction.setMainClientID(askOrder.getClientId());
                                     counterPartyTransaction.setCounterPartyID(orderItemModel.getClientId());
                                     counterPartyTransaction.setMainclientOrderId(askOrder.getOrderId().toString());
-                                    counterPartyTransaction.setCounterPartOrderId(orderItemModel.getOrderId().toString());
+                                    counterPartyTransaction.setCounterPartyOrderId(orderItemModel.getOrderId().toString());
                                     counterPartyTransaction.setMainClientOrderType(askOrder.getOrderType());
                                     counterPartyTransaction.setMainClientTransactionAmount(askOrder.getAmount());
                                     counterPartyTransaction.setSpreadAmount(orderItemModel.getAmount().subtract(askOrder.getAmount()));
+                                    counterPartyTransaction.setTransactionVolume(transactionVolume);
                                     //save in mongodb
                                     transactionItemRepository.insert(mainPartyTransaction);
                                     transactionItemRepository.insert(counterPartyTransaction);
@@ -269,20 +278,22 @@ public class OrderBook {
                                     mainPartyTransaction.setMainClientID(orderItemModel.getClientId());
                                     mainPartyTransaction.setCounterPartyID(askOrder.getClientId());
                                     mainPartyTransaction.setMainclientOrderId(orderItemModel.getOrderId().toString());
-                                    mainPartyTransaction.setCounterPartOrderId(askOrder.getOrderId().toString());
+                                    mainPartyTransaction.setCounterPartyOrderId(askOrder.getOrderId().toString());
                                     mainPartyTransaction.setMainClientOrderType(orderItemModel.getOrderType());//
                                     mainPartyTransaction.setMainClientTransactionAmount(orderItemModel.getAmount());
                                     mainPartyTransaction.setSpreadAmount(askOrder.getAmount().subtract(orderItemModel.getAmount()));
+                                    mainPartyTransaction.setTransactionVolume(transactionVolume);
                                     //make transaction record (for mongodb insertion) for the bid order from bid-tree in memory
                                     TransactionItemModel counterPartyTransaction = new TransactionItemModel();
                                     counterPartyTransaction.setTransactionID(String.valueOf(UUID.randomUUID()));
                                     counterPartyTransaction.setMainClientID(askOrder.getClientId());
                                     counterPartyTransaction.setCounterPartyID(orderItemModel.getClientId());
                                     counterPartyTransaction.setMainclientOrderId(askOrder.getOrderId().toString());
-                                    counterPartyTransaction.setCounterPartOrderId(orderItemModel.getOrderId().toString());
+                                    counterPartyTransaction.setCounterPartyOrderId(orderItemModel.getOrderId().toString());
                                     counterPartyTransaction.setMainClientOrderType(askOrder.getOrderType());
                                     counterPartyTransaction.setMainClientTransactionAmount(askOrder.getAmount());
                                     counterPartyTransaction.setSpreadAmount(orderItemModel.getAmount().subtract(askOrder.getAmount()));
+                                    counterPartyTransaction.setTransactionVolume(transactionVolume);
                                     //save in mongodb
                                     transactionItemRepository.insert(mainPartyTransaction);
                                     transactionItemRepository.insert(counterPartyTransaction);
@@ -299,20 +310,22 @@ public class OrderBook {
                                     mainPartyTransaction.setMainClientID(orderItemModel.getClientId());
                                     mainPartyTransaction.setCounterPartyID(askOrder.getClientId());
                                     mainPartyTransaction.setMainclientOrderId(orderItemModel.getOrderId().toString());
-                                    mainPartyTransaction.setCounterPartOrderId(askOrder.getOrderId().toString());
+                                    mainPartyTransaction.setCounterPartyOrderId(askOrder.getOrderId().toString());
                                     mainPartyTransaction.setMainClientOrderType(orderItemModel.getOrderType());//
                                     mainPartyTransaction.setMainClientTransactionAmount(orderItemModel.getAmount());
                                     mainPartyTransaction.setSpreadAmount(askOrder.getAmount().subtract(orderItemModel.getAmount()));
+                                    mainPartyTransaction.setTransactionVolume(transactionVolume);
                                     //make transaction record (for mongodb insertion) for the bid order from bid-tree in memory
                                     TransactionItemModel counterPartyTransaction = new TransactionItemModel();
                                     counterPartyTransaction.setTransactionID(String.valueOf(UUID.randomUUID()));
                                     counterPartyTransaction.setMainClientID(askOrder.getClientId());
                                     counterPartyTransaction.setCounterPartyID(orderItemModel.getClientId());
                                     counterPartyTransaction.setMainclientOrderId(askOrder.getOrderId().toString());
-                                    counterPartyTransaction.setCounterPartOrderId(orderItemModel.getOrderId().toString());
+                                    counterPartyTransaction.setCounterPartyOrderId(orderItemModel.getOrderId().toString());
                                     counterPartyTransaction.setMainClientOrderType(askOrder.getOrderType());
                                     counterPartyTransaction.setMainClientTransactionAmount(askOrder.getAmount());
                                     counterPartyTransaction.setSpreadAmount(orderItemModel.getAmount().subtract(askOrder.getAmount()));
+                                    counterPartyTransaction.setTransactionVolume(transactionVolume);
                                     //save in mongodb
                                     transactionItemRepository.insert(mainPartyTransaction);
                                     transactionItemRepository.insert(counterPartyTransaction);
@@ -373,6 +386,43 @@ public class OrderBook {
     public TreeMap<BigDecimal, PriorityQueue<OrderItemModel>> getAskTreeByAsset(String assetTicker) {
         HashMap<String, TreeMap<BigDecimal, PriorityQueue<OrderItemModel>>> assetMaps = rootAssetHashMap.get(assetTicker);
         return assetMaps.get(OrderBook.ASK);
+    }
+
+    public List<OrderItemModel> getPendingOrdersByClientId(String strClientId) {
+        try {
+            List<OrderItemModel> pendingTransaction = new ArrayList<>();
+            //List<String> orderTypes = Arrays.asList(OrderBook.BID.strip(), OrderBook.ASK.strip());
+            for (String strAssetTicker: rootAssetHashMap.keySet()) {
+                TreeMap<BigDecimal, PriorityQueue<OrderItemModel>> bidHashMap = rootAssetHashMap.get(strAssetTicker).get(OrderBook.BID);
+                var bidHashMapKeys = bidHashMap.keySet();
+                for (BigDecimal bidKey : bidHashMapKeys) {
+                    if (bidHashMap.get(bidKey) != null) {
+                        pendingTransaction.addAll(bidHashMap.get(bidKey)
+                                .stream()
+                                .filter(Objects::nonNull)
+                                .filter(obj -> obj.getClientId().strip().equalsIgnoreCase(strClientId.strip()))
+                                .<OrderItemModel>map(OrderItemModel::makeCopy)
+                                .toList());
+                    }
+                }
+                TreeMap<BigDecimal, PriorityQueue<OrderItemModel>> askHashMap = rootAssetHashMap.get(strAssetTicker).get(OrderBook.ASK);
+                var askHashMapKeys = askHashMap.keySet();
+                for (BigDecimal askKey : askHashMapKeys) {
+                    if (askHashMap.get(askKey) != null) {
+                        pendingTransaction.addAll(askHashMap.get(askKey)
+                                .stream()
+                                .filter(Objects::nonNull)
+                                .filter(obj -> obj.getClientId().strip().equalsIgnoreCase(strClientId.strip()))
+                                .<OrderItemModel>map(OrderItemModel::makeCopy)
+                                .toList());
+                    }
+                }
+            }
+            return pendingTransaction;
+        } catch (Exception e) {
+            log.error("error in getPendingTransactionsByClientId with \n{}", e.toString());
+            return null;
+        }
     }
 
 

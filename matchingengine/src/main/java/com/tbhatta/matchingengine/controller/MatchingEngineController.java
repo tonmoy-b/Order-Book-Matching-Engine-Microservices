@@ -125,6 +125,12 @@ public class MatchingEngineController {
         return transactionRecordService.getRecordsByClientID(clientID);
     }
 
+    //get pending orders from OrderBook
+    @GetMapping("/transactions/pending/clientId/{clientID}")
+    public List<OrderItemModel> getPendingTransactionsByClient(@PathVariable("clientID") String clientID) {
+        return orderBook.getPendingOrdersByClientId(clientID);
+    }
+
     //getRecordsByClientID
     @GetMapping("/transactions/transactionId/{transactionId}")
     public List<TransactionItemModel> getTransactionsByTransactionId(@PathVariable("transactionId") String transactionId) {

@@ -141,4 +141,16 @@ public class OrderItemModel {
     public void setVolume(String strVolume) {
         this.volume = new BigInteger(strVolume);
     }
+
+    public static OrderItemModel makeCopy (OrderItemModel original) {
+        var copy = new OrderItemModel();
+        copy.orderId = original.getOrderId();
+        copy.clientId = original.getClientId();
+        copy.asset = original.getAsset();
+        copy.orderTime = original.getOrderTime();
+        copy.orderType = original.getOrderType();
+        copy.amount = original.getAmount();
+        copy.volume = original.getVolume();
+        return copy;
+    }
 }

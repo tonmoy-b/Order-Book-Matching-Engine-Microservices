@@ -4,8 +4,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.math.BigDecimal;
-import java.util.Collection;
-import java.util.UUID;
+import java.math.BigInteger;
 
 @Document(collection = "fir01" )
 public class TransactionItemModel {
@@ -15,23 +14,41 @@ public class TransactionItemModel {
     private String mainClientID;
     private String counterPartyID;
     private String mainClientOrderId;
-    private String counterPartOrderId;
+    private String counterPartyOrderId;
     private String mainClientOrderType;
     private BigDecimal mainClientTransactionAmount;
     private BigDecimal spreadAmount;
+    private BigInteger transactionVolume;
+
+    public BigInteger getTransactionVolume() {
+        return transactionVolume;
+    }
+
+    public void setTransactionVolume(BigInteger transactionVolume) {
+        this.transactionVolume = transactionVolume;
+    }
+
+    public String getMainClientOrderId() {
+        return mainClientOrderId;
+    }
+
+    public void setMainClientOrderId(String mainClientOrderId) {
+        this.mainClientOrderId = mainClientOrderId;
+    }
 
     public TransactionItemModel() {
     }
 
-    public TransactionItemModel(String transactionID, String mainClientID, String counterPartyID, String mainclientOrderId, String counterPartOrderId, String mainClientOrderType, BigDecimal mainClientTransactionAmount, BigDecimal spreadAmount) {
+    public TransactionItemModel(String transactionID, String mainClientID, String counterPartyID, String mainclientOrderId, String counterPartyOrderId, String mainClientOrderType, BigDecimal mainClientTransactionAmount, BigDecimal spreadAmount, BigInteger transactionVolume) {
         TransactionID = transactionID;
         this.mainClientID = mainClientID;
         this.counterPartyID = counterPartyID;
         this.mainClientOrderId = mainclientOrderId;
-        this.counterPartOrderId = counterPartOrderId;
+        this.counterPartyOrderId = counterPartyOrderId;
         this.mainClientOrderType = mainClientOrderType;
         this.mainClientTransactionAmount = mainClientTransactionAmount;
         this.spreadAmount = spreadAmount;
+        this.transactionVolume = transactionVolume;
     }
 
     @Override
@@ -41,10 +58,11 @@ public class TransactionItemModel {
                 ", mainClientID='" + mainClientID + '\'' +
                 ", counterPartyID='" + counterPartyID + '\'' +
                 ", mainClientOrderId='" + mainClientOrderId + '\'' +
-                ", counterPartOrderId='" + counterPartOrderId + '\'' +
+                ", counterPartOrderId='" + counterPartyOrderId + '\'' +
                 ", mainClientOrderType='" + mainClientOrderType + '\'' +
                 ", mainClientTransactionAmount=" + mainClientTransactionAmount +
                 ", spreadAmount=" + spreadAmount +
+                ", transactionVolume=" + transactionVolume +
                 '}';
     }
 
@@ -80,12 +98,12 @@ public class TransactionItemModel {
         this.mainClientOrderId = mainClientOrderId;
     }
 
-    public String getCounterPartOrderId() {
-        return counterPartOrderId;
+    public String getCounterPartyOrderId() {
+        return counterPartyOrderId;
     }
 
-    public void setCounterPartOrderId(String counterPartOrderId) {
-        this.counterPartOrderId = counterPartOrderId;
+    public void setCounterPartyOrderId(String counterPartyOrderId) {
+        this.counterPartyOrderId = counterPartyOrderId;
     }
 
     public String getMainClientOrderType() {
