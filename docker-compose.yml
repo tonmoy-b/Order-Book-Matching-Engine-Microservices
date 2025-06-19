@@ -1,4 +1,5 @@
 services:
+
   broker:
     image: apache/kafka:latest
     hostname: broker
@@ -21,6 +22,8 @@ services:
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_LOG_DIRS: /tmp/kraft-combined-logs
       CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+    networks:
+      - ordermatchnetwork
 
   mongodb:
     image: mongo
@@ -35,6 +38,8 @@ services:
     #volumes:
       #- ./scripts/mongo-scripts/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js
       #- ./scripts/mongo-scripts/:/docker-entrypoint-initdb.d/
+    networks:
+      - ordermatchnetwork
 
   mongo-express:
     image: mongo-express
@@ -48,4 +53,9 @@ services:
       - ME_CONFIG_MONGODB_SERVER=mongodb
       - ME_CONFIG_BASICAUTH_USERNAME=admin
       - ME_CONFIG_BASICAUTH_PASSWORD=admin
+    networks:
+      - ordermatchnetwork
 
+networks:
+  ordermatchnetwork:
+    driver: bridge
