@@ -25,6 +25,21 @@ services:
     networks:
       - ordermatchnetwork
 
+  postgresql:
+    image: postgres
+    hostname: postgres
+    container_name: postgres
+    ports:
+      - 5432:5432
+    environment:
+      - POSTGRES_DB=db01
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=admin
+    volumes:
+      - ./scripts/pg-scripts:/docker-entrypoint-initdb.d/
+    networks:
+      - ordermatchnetwork
+
   mongodb:
     image: mongo
     hostname: mongo
@@ -55,6 +70,9 @@ services:
       - ME_CONFIG_BASICAUTH_PASSWORD=admin
     networks:
       - ordermatchnetwork
+
+volumes:
+  pgdata:
 
 networks:
   ordermatchnetwork:

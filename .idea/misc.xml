@@ -7,6 +7,7 @@
         <option value="$PROJECT_DIR$/orderfront/pom.xml" />
         <option value="$PROJECT_DIR$/matchingengine/pom.xml" />
         <option value="$PROJECT_DIR$/apigateway/pom.xml" />
+        <option value="$PROJECT_DIR$/orderbook-microservices-apigateway/pom.xml" />
       </list>
     </option>
     <option name="ignoredFiles">
