@@ -12,11 +12,13 @@ import org.springframework.stereotype.Service;
 @Service
 public class KafkaConsumer {
 
-    private OrderBook orderBook;
+    final private OrderBook orderBook;
+    final private OrderBookMultiThreaded orderBookMultiThreaded;
     private static final Logger log = LoggerFactory.getLogger(KafkaConsumer.class);
 
-    public KafkaConsumer(OrderBook orderBook) {
+    public KafkaConsumer(OrderBook orderBook, OrderBookMultiThreaded orderBookMultiThreaded) {
         this.orderBook = orderBook;
+        this.orderBookMultiThreaded = orderBookMultiThreaded;
     }
 
     @KafkaListener(topics = "orderitem", groupId = "matching-engine")
@@ -33,7 +35,8 @@ public class KafkaConsumer {
                     orderItemModel.toString()
                     );
             //orderBook.enterOrderItem(orderItemModel);
-            orderBook.enterOrderItem_(orderItemModel);
+            //orderBook.enterOrderItem_(orderItemModel);//
+
 
         } catch (InvalidProtocolBufferException e) {
             log.error("Protocol related Exception in Matchingengine service, receiveOrderItemEven with error message :" + e.getMessage());
