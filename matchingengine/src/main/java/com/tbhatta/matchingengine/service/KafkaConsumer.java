@@ -35,7 +35,7 @@ public class KafkaConsumer {
                     orderItemModel.toString()
                     );
             //orderBook.enterOrderItem(orderItemModel);
-            //orderBook.enterOrderItem_(orderItemModel);//
+            orderBook.enterOrderItem_(orderItemModel);//
 
 
         } catch (InvalidProtocolBufferException e) {

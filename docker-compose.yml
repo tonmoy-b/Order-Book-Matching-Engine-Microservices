@@ -71,6 +71,24 @@ services:
     networks:
       - ordermatchnetwork
 
+  prometheus:
+    image: prom/prometheus:latest
+    hostname: prometheus
+    container_name: prometheus
+    ports:
+      - 9090:9090
+    volumes:
+      - ./scripts/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - 9091:3000
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - ./scripts/monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+
 volumes:
   pgdata:
 

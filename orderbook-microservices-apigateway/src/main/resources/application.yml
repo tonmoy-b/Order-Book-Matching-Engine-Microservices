@@ -1,0 +1,36 @@
+spring:
+  application:
+    name: orderbook-microservices-apigateway
+  datasource:
+    url: jdbc:postgresql://localhost:5432/db01
+    username: admin
+    password: admin
+  cloud:
+    gateway:
+      routes:
+        - id: matching-engine
+          uri: http://localhost:4001
+          predicates:
+            - Path=/match-engine/**
+          filters:
+            - StripPrefix=1
+
+        - id: order-book
+          uri: http://localhost:4000
+          predicates:
+             - Path=/order-book/**
+          filters:
+              - StripPrefix=1
+
+server:
+  port: 4999
+
+
+
+
+
+## pg_db connection properties
+#spring.datasource.url=jdbc:postgresql://localhost:5432/db01
+#spring.datasource.username=admin
+#spring.datasource.password=admin
+
