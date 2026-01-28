@@ -24,10 +24,10 @@ import java.util.TreeMap;
 @CrossOrigin
 public class MatchingEngineController {
     private static final Logger log = LoggerFactory.getLogger(MatchingEngineController.class);
-    private KafkaConsumer kafkaConsumer;
-    private OrderBook orderBook;
-    private OrderRecordService orderRecordService;
-    private TransactionRecordService transactionRecordService;
+    private final KafkaConsumer kafkaConsumer;
+    private final OrderBook orderBook;
+    private final OrderRecordService orderRecordService;
+    private final TransactionRecordService transactionRecordService;
 
 //    public MatchingEngineController(KafkaConsumer kafkaConsumer, OrderBook orderBook, OrderRecordService orderRecordService) {
 //        this.kafkaConsumer = kafkaConsumer;

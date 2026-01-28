@@ -18,9 +18,9 @@ spring:
         - id: order-book
           uri: http://localhost:4000
           predicates:
-             - Path=/order-book/**
+            - Path=/order-book/**
           filters:
-              - StripPrefix=1
+            - StripPrefix=1
 
 server:
   port: 4999
