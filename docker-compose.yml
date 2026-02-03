@@ -79,18 +79,55 @@ services:
       - 9090:9090
     volumes:
       - ./scripts/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+    depends_on:
+      - orderfront
+      - matchingengine
+      - orderbook-microservices-apigateway
+    networks:
+      - ordermatchnetwork
 
   grafana:
     image: grafana/grafana:latest
     ports:
-      - 9091:3000
+      - 3000:3000
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin
     volumes:
       - ./scripts/monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+    depends_on:
+      - prometheus
+    networks:
+      - ordermatchnetwork
+
+  orderfront:
+    build: ./orderfront
+    image: orderfront:1.0
+    ports:
+      - "4000:4000"
+    networks:
+      - ordermatchnetwork
+
+  matchingengine:
+    build: ./matchingengine
+    image: matchingengine:1.0
+    ports:
+      - "4001:4001"
+    networks:
+      - ordermatchnetwork
+
+  orderbook-microservices-apigateway:
+    build: ./orderbook-microservices-apigateway
+    image: orderbook-microservices-apigateway:1.0
+    ports:
+      - "4999:4999"
+    networks:
+      - ordermatchnetwork
+
+
 
 volumes:
   pgdata:
+
 
 networks:
   ordermatchnetwork:
