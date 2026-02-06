@@ -29,12 +29,19 @@ services:
     image: postgres
     hostname: postgres
     container_name: postgres
+    env_file:
+      - .env
     ports:
       - 5432:5432
     environment:
-      - POSTGRES_DB=db01
-      - POSTGRES_USER=admin
-      - POSTGRES_PASSWORD=admin
+      - POSTGRES_DB=${PG_DB-db01}
+      - POSTGRES_USER=${PG_USERNAME-admin}
+      - POSTGRES_PASSWORD=${PG_PASSWORD-admin}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PG_USERNAME:-admin} -d ${PG_DB:-db01}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     volumes:
       - ./scripts/pg-scripts:/docker-entrypoint-initdb.d/
     networks:
@@ -71,6 +78,33 @@ services:
     networks:
       - ordermatchnetwork
 
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.1
+    hostname: keycloak
+    container_name: keycloak
+    env_file:
+      - .env
+    ports:
+      - "5000:8080"
+    environment:
+      KEYCLOAK_ADMIN: ${KC_ADMIN_USER:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KC_ADMIN_PASSWORD:-admin}
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgresql:5432/keycloak
+      KC_DB_USERNAME: ${KC_DB_USER:-admin}
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD:-admin}
+      KC_HOSTNAME: localhost #keycloak
+      KC_HOSTNAME_STRICT: "false"
+      KC_HTTP_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+    command:
+      - start-dev
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    networks:
+      - ordermatchnetwork
+
   prometheus:
     image: prom/prometheus:latest
     hostname: prometheus
@@ -102,6 +136,12 @@ services:
   orderfront:
     build: ./orderfront
     image: orderfront:1.0
+    environment:
+      - JVM_OPTS=-Xmx1024M
+    deploy:
+      resources:
+        limits:
+          memory: 1053M
     ports:
       - "4000:4000"
     networks:
@@ -110,6 +150,12 @@ services:
   matchingengine:
     build: ./matchingengine
     image: matchingengine:1.0
+    environment:
+      - JVM_OPTS=-Xmx1536M
+    deploy:
+      resources:
+        limits:
+          memory: 2024M
     ports:
       - "4001:4001"
     networks:
@@ -118,11 +164,22 @@ services:
   orderbook-microservices-apigateway:
     build: ./orderbook-microservices-apigateway
     image: orderbook-microservices-apigateway:1.0
+    environment:
+      - SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=http://keycloak:8080/realms/orderbook-realm
+      - JAVA_OPTS=-Xms512m # heap size capped to 512MB
+    deploy:
+      resources:
+        limits:
+          memory: 1536M
+    depends_on:
+      postgresql:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
     ports:
       - "4999:4999"
     networks:
       - ordermatchnetwork
-
 
 
 volumes:

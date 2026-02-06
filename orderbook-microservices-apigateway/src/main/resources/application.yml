@@ -3,24 +3,31 @@ spring:
     name: orderbook-microservices-apigateway
   datasource:
     url: jdbc:postgresql://localhost:5432/db01
-    username: admin
-    password: admin
+    username: ${PG_USERNAME:-admin}
+    password: ${PG_PASSWORD:-admin}
   cloud:
     gateway:
-      routes:
-        - id: matching-engine
-          uri: http://matchingengine:4001
-          predicates:
-            - Path=/match-engine/**
-          filters:
-            - StripPrefix=1
+      server:
+        webflux:
+          routes:
+            - id: matching-engine
+              uri: http://matchingengine:4001
+              predicates:
+                - Path=/match-engine/**
+              filters:
+                - StripPrefix=1
+            - id: order-book
+              uri: http://orderfront:4000
+              predicates:
+                - Path=/order-book/**
+              filters:
+                - StripPrefix=1
 
-        - id: order-book
-          uri: http://orderfront:4000
-          predicates:
-            - Path=/order-book/**
-          filters:
-            - StripPrefix=1
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://keycloak:8080/realms/orderbook-realm
 
 ###monitoring begin
 management:
@@ -42,6 +49,13 @@ management:
 
 
 ###monitoring end
+
+
+logging:
+  level:
+    org.springframework.security: DEBUG
+    org.springframework.cloud.gateway: DEBUG
+
 
 server:
   port: 4999
