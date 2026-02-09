@@ -48,3 +48,28 @@ build/
 .DS_Store
 Thumbs.db
 *.pem
+
+# Local .terraform directory
+**/.terraform/*
+
+# State files
+*.tfstate
+*.tfstate.*
+
+# Sensitive variable files
+*.tfvars
+*.tfvars.json
+
+# Environment files
+.env
+.envrc
+
+# Crash logs
+crash.log
+crash.*.log
+
+# Ignore override files
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json

@@ -97,10 +97,40 @@ services:
       KC_HOSTNAME_STRICT: "false"
       KC_HTTP_ENABLED: "true"
       KC_HEALTH_ENABLED: "true"
+      KC_METRICS_ENABLED: "true"
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080 && echo -e 'GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 && cat <&3 | grep 'HTTP/1.1 200 OK'"]
+      start_period: 30s
+      interval: 10s
+      timeout: 5s
+      retries: 10
     command:
       - start-dev
     depends_on:
       postgresql:
+        condition: service_healthy
+    networks:
+      - ordermatchnetwork
+
+  terraform-provisioner:
+    image: hashicorp/terraform:latest
+    container_name: terraform-provisioner
+    volumes:
+      - .:/workspace
+    working_dir: /workspace
+    entrypoint: ["/bin/sh", "-c"]
+    env_file:
+      - .env
+    healthcheck:
+      test: [ "CMD", "terraform", "--version" ]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    command:
+      - "terraform init && terraform apply -auto-approve"
+    depends_on:
+      keycloak:
         condition: service_healthy
     networks:
       - ordermatchnetwork
@@ -172,6 +202,9 @@ services:
         limits:
           memory: 1536M
     depends_on:
+      terraform-provisioner:
+        #this is a short running service, it won't retain healthy status
+        condition: service_completed_successfully   #service_healthy
       postgresql:
         condition: service_healthy
       keycloak:
@@ -180,6 +213,7 @@ services:
       - "4999:4999"
     networks:
       - ordermatchnetwork
+
 
 
 volumes:
