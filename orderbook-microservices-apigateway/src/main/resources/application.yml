@@ -28,6 +28,8 @@ spring:
       resourceserver:
         jwt:
           issuer-uri: http://keycloak:8080/realms/orderbook-realm
+          # override the validation to match what Postman sends
+          jwk-set-uri: http://keycloak:8080/realms/orderbook-realm/protocol/openid-connect/certs
 
 ###monitoring begin
 management:

@@ -10,7 +10,9 @@ import org.springframework.security.config.annotation.web.reactive.EnableWebFlux
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.jwt.*;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.ReactiveJwtAuthenticationConverterAdapter;
 import org.springframework.security.web.server.SecurityWebFilterChain;
@@ -34,6 +36,8 @@ public class SecurityConfig {
                         .pathMatchers("/actuator/**").permitAll()
                         .pathMatchers("/actuator/health/**").permitAll()
                         .pathMatchers("/actuator/prometheus/**").permitAll()
+                        // Allow all traffic to the /hello endpoint without a token
+                        //.pathMatchers("/match-engine/hello").permitAll()
 
                         // Protected endpoints - authentication required
                         .pathMatchers("/match-engine/**").authenticated()
@@ -83,6 +87,23 @@ public class SecurityConfig {
         }
     }
 
+
+    @Bean
+    public ReactiveJwtDecoder jwtDecoder() {
+        // Fix for Docker-to-Host network mismatch
+        NimbusReactiveJwtDecoder jwtDecoder = NimbusReactiveJwtDecoder
+                .withJwkSetUri("http://keycloak:8080/realms/orderbook-realm/protocol/openid-connect/certs")
+                .build();
+
+        // Validates token issued by 'localhost:5000' (Postman) against internal keys
+        OAuth2TokenValidator<Jwt> issuerValidator =
+                new JwtIssuerValidator("http://localhost:5000/realms/orderbook-realm");
+
+        jwtDecoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
+                new JwtTimestampValidator(), issuerValidator));
+
+        return jwtDecoder;
+    }
 
 
 

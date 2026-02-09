@@ -23,7 +23,7 @@ provider "keycloak" {
 
 # create a realm
 resource "keycloak_realm" "orderbook_realm" {
-  realm   = "java-orderbook"
+  realm   = "orderbook-realm"
   enabled = true
   display_name = "Orderbook Production"
 }
