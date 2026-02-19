@@ -1,3 +1,6 @@
+
+![CI](https://github.com/tonmoy-b/Order-Book-Matching-Engine-Microservices/actions/workflows/ci.yml/badge.svg)
+
 # An Order-Book and Matching Engine Microservices System with a Next.js Front-end
 
 ## Introduction
