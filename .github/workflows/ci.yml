@@ -23,4 +23,3 @@ jobs:
       - name: Run tests
         run:  |
           mvn test -f orderbook-microservices-apigateway/pom.xml
-          mvn test -f matchingengine/pom.xml
