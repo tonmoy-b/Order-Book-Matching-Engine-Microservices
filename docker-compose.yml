@@ -48,6 +48,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    command: >
+      sh -c "chmod +x /docker-entrypoint-initdb.d/init-keycloak-db.sh && /usr/local/bin/docker-entrypoint.sh postgres"
     volumes:
       - ./scripts/pg-scripts:/docker-entrypoint-initdb.d/
     networks:
