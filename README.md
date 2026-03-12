@@ -38,5 +38,16 @@ The Matching Engine service is tasked with matching bids with asks in a manner t
 4. For each key (Price: BigDecimal) in the TreeMap the value is a PriorityQueue holding all orders (bid or ask as per the containing data-structures) arranged as per the time in which the orders were made (received by the order-front service). PriorityQueues in Java Collections perform offer/add and polls in O(log n) time. _The PriorityQueue takes care of holding orders with the same price in order of time._
 5. Thus, the data structures enable holding orders in accordance to the asset they are made against, whether the orders are Bids or Asks, then grouped accouring to the price-points of the orders, and finally for each price-point the orders are ordered by their timestamp of order-arrival. Thus Orders can be made in terms of price matching (for greatest spread) and then in accordance to time for orders with the same price-point.
 
+## ⚡ Quick Start
+Follow these steps to get the microservices up and running immediately after cloning.
+1. Make sure your Docker service is up and running.
+2. Clone the repo with:
+   ```git clone https://github.com/tonmoy-b/Order-Book-Matching-Engine-Microservices.git```
+3. Go to the cloned dir: cd .\Order-Book-Matching-Engine-Microservices\
+4. Either make a .env file based on the .env.example file or just duplicate it by:
+   ```copy .env.example .env```
+    
+
+
 ## YouTube Quick Demo: 
 [![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/9uIVNLf1A-0/0.jpg)](https://www.youtube.com/watch?v=9uIVNLf1A-0)
