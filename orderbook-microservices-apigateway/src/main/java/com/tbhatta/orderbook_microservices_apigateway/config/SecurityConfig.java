@@ -3,6 +3,7 @@ package com.tbhatta.orderbook_microservices_apigateway.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -10,6 +11,11 @@ import org.springframework.security.config.annotation.web.reactive.EnableWebFlux
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.MapReactiveUserDetailsService;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.jwt.*;
@@ -25,6 +31,7 @@ import java.util.stream.Collectors;
 
 @Configuration
 @EnableWebFluxSecurity
+@Profile("!no_auth")
 public class SecurityConfig {
 
     @Bean
@@ -51,6 +58,12 @@ public class SecurityConfig {
                                 .jwtAuthenticationConverter(grantedAuthoritiesExtractor())
                         )
                 );
+                //login form for browser access
+                //.formLogin(org.springframework.security.config.Customizer.withDefaults())
+                // HTTP Basic -- simple username/password headers
+                //.httpBasic(org.springframework.security.config.Customizer.withDefaults())
+                // login fro spring security to be an oauth2 client
+                //.oauth2Login(org.springframework.security.config.Customizer.withDefaults());
 
         return http.build();
     }
@@ -86,6 +99,23 @@ public class SecurityConfig {
             return authorities;
         }
     }
+
+    /*
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public MapReactiveUserDetailsService userDetailsService() {
+        UserDetails user = User.builder()
+                .username("user")
+                .password("password")
+                .roles("USER")
+                .build();
+        return new MapReactiveUserDetailsService(user);
+    }
+     */
 
 
     @Bean
