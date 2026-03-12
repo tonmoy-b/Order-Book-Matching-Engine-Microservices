@@ -2,6 +2,7 @@
 set -e
 
 
+
 DB_EXISTS=$(psql -U "$POSTGRES_USER" -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='keycloak'")
 
 if [ "$DB_EXISTS" != "1" ]; then
