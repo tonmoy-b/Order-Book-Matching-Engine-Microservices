@@ -35,6 +35,7 @@ services:
     hostname: postgres
     container_name: postgres
     env_file:
+      - .env.example
       - .env
     ports:
       - 5432:5432
@@ -88,7 +89,8 @@ services:
     hostname: keycloak
     container_name: keycloak
     env_file:
-      - .
+      - .env.example
+      - .env
     profiles: ["full_security"]
     ports:
       - "5000:8080"
@@ -126,6 +128,7 @@ services:
     working_dir: /workspace
     entrypoint: ["/bin/sh", "-c"]
     env_file:
+      - .env.example
       - .env
     profiles: ["full_security"]
     healthcheck:
