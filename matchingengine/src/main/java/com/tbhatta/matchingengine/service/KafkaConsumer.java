@@ -2,6 +2,7 @@ package com.tbhatta.matchingengine.service;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.tbhatta.matchingengine.model.OrderItemModel;
+import com.tbhatta.matchingengine.order_records.service.OrderRecordService;
 import com.tbhatta.protos.me.OrderItemEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,6 +15,7 @@ public class KafkaConsumer {
 
     final private OrderBook orderBook;
     final private OrderBookMultiThreaded orderBookMultiThreaded;
+    //final private OrderRecordService orderRecordService;
     private static final Logger log = LoggerFactory.getLogger(KafkaConsumer.class);
 
     public KafkaConsumer(OrderBook orderBook, OrderBookMultiThreaded orderBookMultiThreaded) {
@@ -34,6 +36,11 @@ public class KafkaConsumer {
             log.info("MatchingEngineService made OrderItemModel\n\t" +
                     orderItemModel.toString()
                     );
+            // Check if already processed
+//            if (orderRecordService.isAlreadyProcessed(orderItemModel.getOrderId())) {
+//                log.warn("Duplicate order detected, skipping: {}", orderItemModel.getOrderId());
+//                return;
+//            }
             //orderBook.enterOrderItem(orderItemModel);
             orderBook.enterOrderItem_(orderItemModel);//
 

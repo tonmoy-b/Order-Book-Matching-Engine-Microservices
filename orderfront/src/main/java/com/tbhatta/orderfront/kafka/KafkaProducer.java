@@ -36,7 +36,9 @@ public class KafkaProducer {
                 .setVolume(orderItem.getVolume().toString())
                 .build();
         try {
+
             kafkaTemplate.send("orderitem", orderItemEvent.toByteArray());
+            log.info("Kafka Producer placed message with Id={}", orderItemEvent.toString());
         } catch (Exception e) {
             log.error("Error in sending OrderItemEvent :"+e.getMessage());
         }
