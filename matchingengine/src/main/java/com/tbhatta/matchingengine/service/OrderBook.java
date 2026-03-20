@@ -2,6 +2,13 @@ package com.tbhatta.matchingengine.service;
 
 import com.tbhatta.matchingengine.model.TransactionItemModel;
 import com.tbhatta.matchingengine.model.comparator.*;
+import com.tbhatta.matchingengine.model.comparator.AskComparatorOrderTime;
+import com.tbhatta.matchingengine.model.comparator.BidComparatorOrderTime;
+import com.tbhatta.matchingengine.service.matching.AskMatchingStrategy;
+import com.tbhatta.matchingengine.service.matching.BidMatchingStrategy;
+import com.tbhatta.matchingengine.service.matching.MatchResult;
+import com.tbhatta.matchingengine.service.matching.MatchingStrategy;
+import com.tbhatta.matchingengine.service.persistence.TransactionPersistenceService;
 import com.tbhatta.matchingengine.order_records.repository.TransactionItemRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,22 +34,65 @@ public class OrderBook {
     public HashMap<String, HashMap<String, TreeMap<BigDecimal, PriorityQueue<OrderItemModel>>>> rootAssetHashMap;
     @Autowired
     public TransactionItemRepository transactionItemRepository;
+    //    @Autowired
+    //    public TransactionPersistenceService transactionPersistenceService;
+    private final AssetOrderBookFactory assetOrderBookFactory;
+    private final AskMatchingStrategy askMatchingStrategy;
+    private final BidMatchingStrategy bidMatchingStrategy;
+    private final TransactionPersistenceService transactionPersistenceService;
 
-    public OrderBook() {
+    public OrderBook(
+            AssetOrderBookFactory assetOrderBookFactory,
+            AskMatchingStrategy askMatchingStrategy,
+            BidMatchingStrategy bidMatchingStrategy,
+            TransactionPersistenceService transactionPersistenceService
+    ) {
         //askPQ = new PriorityQueue<>(new AskComparatorPrice());
         //bidPQ = new PriorityQueue<>(new BidComparatorPrice());
         // //
         //bidTreeMap = new TreeMap<>(new BidComparatorPriceBigDecimal());
         //askTreeMap = new TreeMap<>(new AskComparatorPriceBigDecimal());
+        this.assetOrderBookFactory = assetOrderBookFactory;
+        this.askMatchingStrategy = askMatchingStrategy;
+        this.bidMatchingStrategy = bidMatchingStrategy;
+        this.transactionPersistenceService = transactionPersistenceService;
         rootAssetHashMap = new HashMap<>();
     }
 
-    public void enterOrderItem(OrderItemModel orderItemModel) {
-        String incomingOrderAsset = orderItemModel.getAsset().strip().toLowerCase();
-
+    private void ensureAssetBookExists(String normalisedAsset, String originalAsset) {
+        if (!rootAssetHashMap.containsKey(normalisedAsset)) {
+            log.info("OrderBook: initialising new asset book for '{}'", normalisedAsset);
+            rootAssetHashMap.put(normalisedAsset, assetOrderBookFactory.createAssetBook());
+        }
     }
 
     public void enterOrderItem_(OrderItemModel orderItemModel) {
+        //String incomingOrderAsset = orderItemModel.getAsset().strip().toLowerCase();
+        try {
+            String asset = normalise(orderItemModel.getAsset());
+            ensureAssetBookExists(asset, orderItemModel.getAsset());
+            HashMap<String, TreeMap<BigDecimal, PriorityQueue<OrderItemModel>>> assetBook =
+                    rootAssetHashMap.get(asset);
+            String orderType = orderItemModel.getOrderType().strip().toLowerCase();
+            if (orderType.equals(ASK)) {
+                TreeMap<BigDecimal, PriorityQueue<OrderItemModel>> bidTree = assetBook.get(BID);
+                List<MatchResult> fills = askMatchingStrategy.match(orderItemModel, bidTree);
+                transactionPersistenceService.persistAll(fills);
+            } else if (orderType.equals(BID)) {
+                TreeMap<BigDecimal, PriorityQueue<OrderItemModel>> askTree = assetBook.get(ASK);
+                List<MatchResult> fills = bidMatchingStrategy.match(orderItemModel, askTree);
+                transactionPersistenceService.persistAll(fills);
+            } else {
+                throw new IllegalArgumentException("OrderType must be 'bid' or 'ask', got: " + orderItemModel.getOrderType());
+            }
+            // If volume remains after matching, park on own side of the book
+            requeueResidual(orderItemModel, assetBook, orderType);
+        } catch (Exception e) {
+            log.error("Error in enterOrderItem_ for order {}: {}", orderItemModel.getOrderId(), e.getMessage(), e);
+        }
+    }
+
+    public void enterOrderItem__(OrderItemModel orderItemModel) {
         try {
             String orderAsset = orderItemModel.getAsset().strip().toLowerCase();
             //check if ask-bid trees exist for that asset
@@ -372,6 +422,31 @@ public class OrderBook {
 
     }
 
+    /// new helpers
+    private String normalise(String s) {
+        return s.strip().toLowerCase();
+    }
+
+    private void requeueResidual(
+            OrderItemModel order,
+            HashMap<String, TreeMap<BigDecimal, PriorityQueue<OrderItemModel>>> assetBook,
+            String orderType
+    ) {
+        if (order.getVolume().compareTo(BigInteger.ZERO) <= 0) {
+            return; // fully filled, nothing left to insert
+        }
+        String side = orderType.equals(ASK) ? ASK : BID;
+        TreeMap<BigDecimal, PriorityQueue<OrderItemModel>> ownTree = assetBook.get(side);
+        BigDecimal price = order.getAmount();
+        if (!ownTree.containsKey(price)) {
+            ownTree.put(price, assetOrderBookFactory.createPriceLevel());
+        }
+        ownTree.get(price).add(order);
+        log.info("OrderBook: parked residual volume={} for order {} on {} side at price {}",
+                order.getVolume(), order.getOrderId(), side, price);
+    }
+
+
     private String iteratorToString(Iterator<BigDecimal> iterator) {
         String s = "";
         for (Iterator<BigDecimal> it = iterator; it.hasNext(); ) {
@@ -397,7 +472,7 @@ public class OrderBook {
         try {
             List<OrderItemModel> pendingTransaction = new ArrayList<>();
             //List<String> orderTypes = Arrays.asList(OrderBook.BID.strip(), OrderBook.ASK.strip());
-            for (String strAssetTicker: rootAssetHashMap.keySet()) {
+            for (String strAssetTicker : rootAssetHashMap.keySet()) {
                 TreeMap<BigDecimal, PriorityQueue<OrderItemModel>> bidHashMap = rootAssetHashMap.get(strAssetTicker).get(OrderBook.BID);
                 var bidHashMapKeys = bidHashMap.keySet();
                 for (BigDecimal bidKey : bidHashMapKeys) {
@@ -431,10 +506,7 @@ public class OrderBook {
     }
 
 
-
-
-
-    ////////////////////////////////
+    /// /////////////////////////////
     @Scheduled(fixedRate = 3000)
     public void runMatchingEngine() {
         try {
