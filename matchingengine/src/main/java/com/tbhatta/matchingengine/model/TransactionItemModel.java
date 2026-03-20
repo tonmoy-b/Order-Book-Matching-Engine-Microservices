@@ -5,8 +5,9 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.UUID;
 
-@Document(collection = "fir01" )
+@Document(collection = "fir01")
 public class TransactionItemModel {
 
     @Id
@@ -19,6 +20,7 @@ public class TransactionItemModel {
     private BigDecimal mainClientTransactionAmount;
     private BigDecimal spreadAmount;
     private BigInteger transactionVolume;
+
 
     public BigInteger getTransactionVolume() {
         return transactionVolume;
@@ -49,6 +51,18 @@ public class TransactionItemModel {
         this.mainClientTransactionAmount = mainClientTransactionAmount;
         this.spreadAmount = spreadAmount;
         this.transactionVolume = transactionVolume;
+    }
+
+    private TransactionItemModel(Builder builder) {
+        this.TransactionID               = builder.transactionID;
+        this.mainClientID                = builder.mainClientID;
+        this.counterPartyID              = builder.counterPartyID;
+        this.mainClientOrderId           = builder.mainClientOrderId;
+        this.counterPartyOrderId         = builder.counterPartyOrderId;
+        this.mainClientOrderType         = builder.mainClientOrderType;
+        this.mainClientTransactionAmount = builder.mainClientTransactionAmount;
+        this.spreadAmount                = builder.spreadAmount;
+        this.transactionVolume           = builder.transactionVolume;
     }
 
     @Override
@@ -129,4 +143,82 @@ public class TransactionItemModel {
     public void setSpreadAmount(BigDecimal spreadAmount) {
         this.spreadAmount = spreadAmount;
     }
+
+    // BUILDER
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static class Builder {
+        private String transactionID = UUID.randomUUID().toString();
+        private String mainClientID;
+        private String counterPartyID;
+        private String mainClientOrderId;
+        private String counterPartyOrderId;
+        private String mainClientOrderType;
+        private BigDecimal mainClientTransactionAmount;
+        private BigDecimal spreadAmount;
+        private BigInteger transactionVolume;
+
+        private Builder() {
+        }
+
+        public Builder transactionId(String id) {
+            this.transactionID = id;
+            return this;
+        }
+
+        public Builder mainClientId(String id) {
+            this.mainClientID = id;
+            return this;
+        }
+
+        public Builder counterPartyId(String id) {
+            this.counterPartyID = id;
+            return this;
+        }
+
+        public Builder mainClientOrderId(String id) {
+            this.mainClientOrderId = id;
+            return this;
+        }
+
+        public Builder counterPartyOrderId(String id) {
+            this.counterPartyOrderId = id;
+            return this;
+        }
+
+        public Builder mainClientOrderType(String type) {
+            this.mainClientOrderType = type;
+            return this;
+        }
+
+        public Builder mainClientTransactionAmount(BigDecimal amount) {
+            this.mainClientTransactionAmount = amount;
+            return this;
+        }
+
+        public Builder spreadAmount(BigDecimal spread) {
+            this.spreadAmount = spread;
+            return this;
+        }
+
+        public Builder transactionVolume(BigInteger volume) {
+            this.transactionVolume = volume;
+            return this;
+        }
+
+        public TransactionItemModel build() {
+            if (mainClientID == null || counterPartyID == null) {
+                throw new IllegalStateException("mainClientID and counterPartyID are required");
+            }
+            if (transactionVolume == null || transactionVolume.compareTo(BigInteger.ZERO) <= 0) {
+                throw new IllegalStateException("transactionVolume must be positive");
+            }
+            return new TransactionItemModel(this);
+        }
+    }
+
+
 }
