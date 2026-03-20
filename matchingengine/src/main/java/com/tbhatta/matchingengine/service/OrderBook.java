@@ -37,6 +37,11 @@ public class OrderBook {
         rootAssetHashMap = new HashMap<>();
     }
 
+    public void enterOrderItem(OrderItemModel orderItemModel) {
+        String incomingOrderAsset = orderItemModel.getAsset().strip().toLowerCase();
+
+    }
+
     public void enterOrderItem_(OrderItemModel orderItemModel) {
         try {
             String orderAsset = orderItemModel.getAsset().strip().toLowerCase();
@@ -429,32 +434,7 @@ public class OrderBook {
 
 
 
-    /// //////////////////////////////////
-    public void enterOrderItem(OrderItemModel orderItemModel) {
-        BigDecimal price = orderItemModel.getAmount();
-        if (orderItemModel.getOrderType().toLowerCase().strip().equals("bid")) {
-            if (bidTreeMap.containsKey(price)) {
-                PriorityQueue<OrderItemModel> pQ = bidTreeMap.get(price);
-                pQ.add(orderItemModel);
-            } else {
-                PriorityQueue<OrderItemModel> bidPriorityQueue = new PriorityQueue<OrderItemModel>(new BidComparatorOrderTime());
-                bidPriorityQueue.add(orderItemModel);
-                bidTreeMap.put(price, bidPriorityQueue);
-            }
-        } else if (orderItemModel.getOrderType().toLowerCase().strip().equals("ask")) {
-            if (askTreeMap.containsKey(price)) {
-                PriorityQueue<OrderItemModel> pQ = askTreeMap.get(price);
-                pQ.add(orderItemModel);
-            } else {
-                PriorityQueue<OrderItemModel> askPriorityQueue = new PriorityQueue<OrderItemModel>(new AskComparatorOrderTime());
-                askPriorityQueue.add(orderItemModel);
-                askTreeMap.put(price, askPriorityQueue);
-            }
-        } else {
-            log.error("Invalid Order Item OrderType of {}", orderItemModel.getOrderType());
-        }
-    }
-
+    ////////////////////////////////
     @Scheduled(fixedRate = 3000)
     public void runMatchingEngine() {
         try {
