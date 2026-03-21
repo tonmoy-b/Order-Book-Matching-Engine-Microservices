@@ -145,6 +145,4 @@ class TransactionPersistenceServiceTest {
                 FillType.EXACT_FULL
         );
     }
-
-
 }
