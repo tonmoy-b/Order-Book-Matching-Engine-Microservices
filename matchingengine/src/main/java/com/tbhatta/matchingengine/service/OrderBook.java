@@ -13,6 +13,8 @@ import com.tbhatta.matchingengine.order_records.repository.TransactionItemReposi
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.annotation.Order;
+import org.springframework.data.mongodb.core.aggregation.BooleanOperators;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -20,6 +22,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import com.tbhatta.matchingengine.model.OrderItemModel;
@@ -32,6 +35,7 @@ public class OrderBook {
     //public PriorityQueue<OrderItemModel> askPQ, bidPQ;
     public TreeMap<BigDecimal, PriorityQueue<OrderItemModel>> bidTreeMap, askTreeMap;
     public HashMap<String, HashMap<String, TreeMap<BigDecimal, PriorityQueue<OrderItemModel>>>> rootAssetHashMap;
+    private final ConcurrentHashMap<String, AssetOrderBook> assetBooks = new ConcurrentHashMap<>();
     @Autowired
     public TransactionItemRepository transactionItemRepository;
     //    @Autowired
@@ -59,14 +63,40 @@ public class OrderBook {
         rootAssetHashMap = new HashMap<>();
     }
 
-    private void ensureAssetBookExists(String normalisedAsset, String originalAsset) {
-        if (!rootAssetHashMap.containsKey(normalisedAsset)) {
-            log.info("OrderBook: initialising new asset book for '{}'", normalisedAsset);
-            rootAssetHashMap.put(normalisedAsset, assetOrderBookFactory.createAssetBook());
+    public void enterOrderItem_(OrderItemModel orderItemModel) {
+        try {
+            String asset     = normalise(orderItemModel.getAsset());
+            String orderType = normalise(orderItemModel.getOrderType());
+            AssetOrderBook orderBook = assetBooks.computeIfAbsent(
+                    asset, k -> assetOrderBookFactory.createAssetBook()
+            );
+            orderBook.acquireWriteLock();
+            try {
+                processOrder(orderItemModel, orderBook, orderType);
+            } catch (Exception e) {
+                log.error("Error in enterOrderItem_ for order {}: {}",
+                        orderItemModel.getOrderId(), e.getMessage(), e);
+            } finally {
+                orderBook.releaseWriteLock();
+            }
+        } catch (Exception e) {
+            log.error("Error in enterOrderItem_ for order {}: {}", orderItemModel.getOrderId(), e.getMessage(), e);
         }
     }
 
-    public void enterOrderItem_(OrderItemModel orderItemModel) {
+    private void ensureAssetBookExists(String normalisedAsset, String originalAsset) {
+        if (!rootAssetHashMap.containsKey(normalisedAsset)) {
+            log.info("OrderBook: initialising new asset book for '{}'", normalisedAsset);
+            var assetOrderBook = assetOrderBookFactory.createAssetBook();
+            HashMap<String, TreeMap<BigDecimal, PriorityQueue<OrderItemModel>>> assetTrees = new HashMap<>();
+            assetTrees.put(ASK, assetOrderBook.getAskTree());
+            assetTrees.put(BID, assetOrderBook.getBidTree());
+            rootAssetHashMap.put(normalisedAsset, assetTrees);
+        }
+    }
+
+    //TODO: delete once testing is done
+    public void enterOrderItem__SingleThread(OrderItemModel orderItemModel) {
         //String incomingOrderAsset = orderItemModel.getAsset().strip().toLowerCase();
         try {
             String asset = normalise(orderItemModel.getAsset());
@@ -86,13 +116,24 @@ public class OrderBook {
                 throw new IllegalArgumentException("OrderType must be 'bid' or 'ask', got: " + orderItemModel.getOrderType());
             }
             // If volume remains after matching, park on own side of the book
-            requeueResidual(orderItemModel, assetBook, orderType);
+            //var assetOrderBook = new AssetOrderBook(assetBook.get(BID), assetBook.get(ASK));
+            //requeueResidual(orderItemModel, assetOrderBook, orderType);
+            if (orderItemModel.getVolume().compareTo(BigInteger.ZERO) > 0) {
+                TreeMap<BigDecimal, PriorityQueue<OrderItemModel>> ownTree =
+                        orderType.equals(ASK) ? assetBook.get(ASK) : assetBook.get(BID);
+                BigDecimal price = orderItemModel.getAmount();
+                if (!ownTree.containsKey(price)) {
+                    ownTree.put(price, assetOrderBookFactory.createPriceLevel());
+                }
+                ownTree.get(price).add(orderItemModel);
+            }
         } catch (Exception e) {
             log.error("Error in enterOrderItem_ for order {}: {}", orderItemModel.getOrderId(), e.getMessage(), e);
         }
     }
 
-    public void enterOrderItem__(OrderItemModel orderItemModel) {
+    //TODO: delete once testing is done
+    public void enterOrderItem__Colossus(OrderItemModel orderItemModel) {
         try {
             String orderAsset = orderItemModel.getAsset().strip().toLowerCase();
             //check if ask-bid trees exist for that asset
@@ -427,23 +468,51 @@ public class OrderBook {
         return s.strip().toLowerCase();
     }
 
-    private void requeueResidual(
+    private void processOrder(
             OrderItemModel order,
-            HashMap<String, TreeMap<BigDecimal, PriorityQueue<OrderItemModel>>> assetBook,
+            AssetOrderBook orderBook,
             String orderType
     ) {
+        List<MatchResult> fills;
+        if (orderType.equals(ASK)) {
+            fills = askMatchingStrategy.match(order, orderBook.getBidTree());
+        } else if (orderType.equals(BID)) {
+            fills = bidMatchingStrategy.match(order, orderBook.getAskTree());
+        } else {
+            throw new IllegalArgumentException(
+                    "OrderType must be 'bid' or 'ask', got: " + order.getOrderType()
+            );
+        }
+        transactionPersistenceService.persistAll(fills);
+        requeueResidual(order, orderBook, orderType);
+    }
+
+    private void requeueResidual(
+            OrderItemModel order,
+            AssetOrderBook orderBook,
+            String orderType
+    ) {
+        orderType = normalise(orderType);
         if (order.getVolume().compareTo(BigInteger.ZERO) <= 0) {
             return; // fully filled, nothing left to insert
         }
-        String side = orderType.equals(ASK) ? ASK : BID;
-        TreeMap<BigDecimal, PriorityQueue<OrderItemModel>> ownTree = assetBook.get(side);
-        BigDecimal price = order.getAmount();
-        if (!ownTree.containsKey(price)) {
-            ownTree.put(price, assetOrderBookFactory.createPriceLevel());
+        TreeMap<BigDecimal, PriorityQueue<OrderItemModel>> tree;
+        if (orderType.equals(ASK)) {
+            tree = orderBook.getAskTree();
+        } else if (orderType.equals(BID)) {
+            tree = orderBook.getBidTree();
+        } else {
+            throw new IllegalArgumentException(
+                    "OrderType must be 'bid' or 'ask', got: " + order.getOrderType()
+            );
         }
-        ownTree.get(price).add(order);
+        BigDecimal orderAmount = order.getAmount();
+        if (!tree.containsKey(orderAmount)) {
+            tree.put(orderAmount, assetOrderBookFactory.createPriceLevel());
+        }
+        tree.get(orderAmount).add(order);
         log.info("OrderBook: parked residual volume={} for order {} on {} side at price {}",
-                order.getVolume(), order.getOrderId(), side, price);
+                order.getVolume(), order.getOrderId(), orderType, orderAmount);
     }
 
 
@@ -457,18 +526,69 @@ public class OrderBook {
 
     }
 
+    //keep lean to release lock asap
+    public List<OrderItemModel> getPendingOrdersByClientId(String strClientId) {
+        List<OrderItemModel> pendingOrders = new ArrayList<>();
+        String normClient = normalise(strClientId);
+        for (Map.Entry<String, AssetOrderBook> entry : assetBooks.entrySet()) {
+            AssetOrderBook orderBook = entry.getValue();
+            orderBook.acquireReadLock();
+            try {
+                collectPendingFromTree(orderBook.getBidTree(), normClient, pendingOrders);
+                collectPendingFromTree(orderBook.getAskTree(), normClient, pendingOrders);
+            } catch (Exception e) {
+                log.error("Error in getPendingOrdersByClientId with clientId == {}.\n\t Exception is {}", strClientId, e.getStackTrace());
+            }
+            finally {
+                orderBook.releaseReadLock();
+            }
+        }
+        return pendingOrders;
+    }
+
+    private void collectPendingFromTree(TreeMap<BigDecimal, PriorityQueue<OrderItemModel>> tree,
+                                        String normClient,
+                                        List<OrderItemModel> listPendingOrders) {
+        //loop through priority queues
+        for (PriorityQueue<OrderItemModel> queue : tree.values()) {
+            if (queue == null) {
+                continue;
+            }
+            queue.stream()
+                    .filter(Objects::nonNull)
+                    .filter(orderItemModel -> normalise(orderItemModel.getClientId()).equals(normClient))
+                    .map(OrderItemModel::makeCopy)
+                    .forEach(listPendingOrders::add);
+        }
+    }
+
 
     public TreeMap<BigDecimal, PriorityQueue<OrderItemModel>> getBidTreeByAsset(String assetTicker) {
-        HashMap<String, TreeMap<BigDecimal, PriorityQueue<OrderItemModel>>> assetMaps = rootAssetHashMap.get(assetTicker);
-        return assetMaps.get(OrderBook.BID);
+        AssetOrderBook assetOrderBook = assetBooks.get(normalise(assetTicker));
+        if (assetOrderBook != null) {
+            return assetOrderBook.getBidTree();
+        } else {
+            return null;
+        }
     }
 
     public TreeMap<BigDecimal, PriorityQueue<OrderItemModel>> getAskTreeByAsset(String assetTicker) {
-        HashMap<String, TreeMap<BigDecimal, PriorityQueue<OrderItemModel>>> assetMaps = rootAssetHashMap.get(assetTicker);
-        return assetMaps.get(OrderBook.ASK);
+        AssetOrderBook assetOrderBook = assetBooks.get(normalise(assetTicker));
+        if (assetOrderBook != null) {
+            return assetOrderBook.getAskTree();
+        } else {
+            return null;
+        }
     }
 
-    public List<OrderItemModel> getPendingOrdersByClientId(String strClientId) {
+    public long getResidualVolume(String assetTicker, String side) {
+        AssetOrderBook book = assetBooks.get(normalise(assetTicker));
+        if (book == null) return 0;
+        // locking taken care of in AssetOrderBook func. code
+        return book.getTotalVolume(side);
+    }
+
+    public List<OrderItemModel> getPendingOrdersByClientIdNoLock(String strClientId) {
         try {
             List<OrderItemModel> pendingTransaction = new ArrayList<>();
             //List<String> orderTypes = Arrays.asList(OrderBook.BID.strip(), OrderBook.ASK.strip());
@@ -507,7 +627,7 @@ public class OrderBook {
 
 
     /// /////////////////////////////
-    @Scheduled(fixedRate = 3000)
+    //@Scheduled(fixedRate = 3000)
     public void runMatchingEngine() {
         try {
             //getHighBid();

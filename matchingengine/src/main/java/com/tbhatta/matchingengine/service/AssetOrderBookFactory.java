@@ -17,14 +17,12 @@ public class AssetOrderBookFactory {
         return new PriorityQueue<>(new AskComparatorOrderTime());
     }
 
-    public HashMap<String, TreeMap<BigDecimal, PriorityQueue<OrderItemModel>>> createAssetBook() {
+    public AssetOrderBook createAssetBook() {
         TreeMap<BigDecimal, PriorityQueue<OrderItemModel>> bidTree =
                 new TreeMap<>(new BidComparatorPriceBigDecimal());
         TreeMap<BigDecimal, PriorityQueue<OrderItemModel>> askTree =
                 new TreeMap<>(new AskComparatorPriceBigDecimal());
-        HashMap<String, TreeMap<BigDecimal, PriorityQueue<OrderItemModel>>> book = new HashMap<>();
-        book.put(OrderBook.BID, bidTree);
-        book.put(OrderBook.ASK, askTree);
-        return book;
+        var orderBook = new AssetOrderBook(bidTree, askTree);
+        return orderBook;
     }
 }
