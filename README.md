@@ -50,6 +50,7 @@ rootAssetHashMap                          HashMap<String, ...>
 
 `BigDecimal` is used for all price values to guarantee exact decimal arithmetic — no floating-point rounding errors in financial calculations.
 
+`MongoDB` is used as the 'Cold Path' for audit-logging and transaction history, ensuring that matching logic (the 'Hot Path') remains entirely in-memory for microsecond latency
 ## Engineering Design
 
 ### Refactored matching logic — Strategy pattern
@@ -183,6 +184,14 @@ Trigger: only when Step 1 is in place and the queue itself shows as the bottlene
 With Kafka partitioned by asset ticker, all orders for a given asset already arrive on a single partition consumed by a single thread — the system currently exhibits Single Writer behaviour for free at the Kafka level. The per-asset lock protects against scenarios where `concurrency > 1` is configured on the `@KafkaListener`, or where multiple partitions for the same asset are assigned to the same consumer instance. Implementing the full Single Writer pattern is the correct next step when profiling shows contention, not before.
 
 ---
+## Consistency Patterns for Cross-Asset Dependencies (Spread & Basket Trading)
+The current architecture utilizes asset-ticker partitioning to guarantee strict consistency for individual order books. However, for huge-scale institutional trading atomic multi-leg execution (e.g., Spread Trading, Index Baskets, or Statistical Arbitrage) maybe desired. In order to scale these dependencies without breaking the low-latency "Single Writer" model, the following strategies are proposed:
+* **Deterministic Asset Colocation**: For high-frequency pairs (e.g., GOOG vs. GOOGL or SPY vs. ES), the Kafka partitioning logic is updated to route correlated tickers to the same partition and Matching-Engine instance. This allows the matching engine to perform atomic matches across both books within a single memory space and lock scope, maintaining $O(\log N)$ performance. This can be done using a custom Kafka Partitioner that hashes an "Asset Group ID" rather than a single ticker symbol.
+
+* **Distributed Coordinator Pattern**: For complex spreads across disparate partitions, a dedicated Cross-Asset Coordinator service is introduced to manage the 'All-or-None' atomicity of the trade. The Coordinator sends a "Conditional Match" request to Leg A's engine to lock liquidity. Once confirmed, it executes Leg B - in case there's a failure then If Leg B fails to fill, the Coordinator sends a "Compensating Transaction" to release Leg A, preventing partial fills in a spread trade. This enhances the consistency of the system overall. 
+
+* **Shared-Memory Communication/Coordination (Aeron/Chronicle)**: For the enhancement of this system to extreme (sub-microsecond) low-latencies at scale, the network-hop delays introduced by Kafka partitions can be replaced with a shared-memory messaging bus like Aeron as a streamlining measure. In this case, a single hardware-clocked sequencer would assign a global sequence number to all incoming orders across all assets. And, Matching engines would co-ordinate with this shared-memory bus, so that they can maintain synchronized views of correlated assets without the overhead of distributed locking.
+---
 
 ## Tech Stack
 
@@ -209,7 +218,7 @@ System Diagram:
 3. The primary way of distributing messages between brokers, and later into the matching-engine service instances, will be the asset-ticker symbols (which are strings holding the asset-ticker e.g. AAPL, MSFT, GOOG etc). Scaling is meant to be accomplished by diving these asset-ticker strings by alphabetical ordering and segmenting among the various kafka brokers/partitions and thus eventually into corresponding matching-engine service instances based on the partitions they have kafka consumers ingesting data from.
 4. Each matching-engine service has its own mongodb instance thus the DB gets scaled alongwith the matching-engine service instances.
 
-## Data Structure Designs in Matching-Engine Service
+## Walk-through of Data Structure Designs in Matching-Engine Service
 ![data-structure-diagram](./images/Fig1_2x_darkmode.png "Data-Structures for Matching-Engine Service.")
 The Matching Engine service is tasked with matching bids with asks in a manner that gathers the highest spread possible while making matches. 
 
