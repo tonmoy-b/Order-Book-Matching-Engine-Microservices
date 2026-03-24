@@ -81,7 +81,7 @@ Additional patterns applied:
 
 Scenarios covered: exact fills, partial fills (both directions), multi-level draining, price boundary enforcement, self-match prevention, persistence failure resilience, volume conservation under concurrency, cross-asset independence, and atomic asset book initialisation.
 
-### Observability — Micrometer + Prometheus
+### Observability — Micrometer + Prometheus 
 
 Every order processed emits structured metrics:
 
@@ -233,9 +233,17 @@ Follow these steps to get the microservices up and running immediately after clo
 1. Make sure your Docker service is up and running.
 2. Clone the repo with:
    ```git clone https://github.com/tonmoy-b/Order-Book-Matching-Engine-Microservices.git```
-3. Go to the cloned dir: cd .\Order-Book-Matching-Engine-Microservices\
-4. Either make a .env file based on the .env.example file or just duplicate it by:
+3. Go to the cloned repo dir: ```cd .\Order-Book-Matching-Engine-Microservices\```
+4. Either make a .env file based on the .env.example file or just duplicate it to run simply without the security features locally by:
    ```copy .env.example .env```
+5. Start up the services in Docker: ```docker compose up -d```
+6. Go to the frontend directory: ```cd frontend```
+7. Install Next.js dependencies: ```npm install```
+8. Start the Next.js app: ```npm run dev```
+9. Open browser and go to ```localhost:3001```
+10. At which point you will be in the below screen: ![Order Entry Screen](./images/Screencaps/EntryOrderScreenScreenshot_.png "App Order Screen.")
+11. After entering the orders you view the completed transactions as below: ![Transactions Screen](./images/Screencaps/TransactionsRecordScreenFilledScreenshot.png "Transactions Screen.")
+12. You can also view the pending Orders as below: ![Pending Orders Screen](./images/Screencaps/PendingTxRecordScreenFilledScreenshot.png "Pending Orders Screen.")
     
 
 
