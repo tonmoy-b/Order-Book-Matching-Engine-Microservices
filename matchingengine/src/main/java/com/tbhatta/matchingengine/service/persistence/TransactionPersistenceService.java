@@ -5,6 +5,7 @@ import com.tbhatta.matchingengine.model.OrderItemModel;
 import com.tbhatta.matchingengine.model.TransactionItemModel;
 import com.tbhatta.matchingengine.service.matching.MatchResult;
 
+import com.tbhatta.matchingengine.service.metrics.OrderBookMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -15,9 +16,11 @@ import java.util.List;
 public class TransactionPersistenceService {
     private static final Logger log = LoggerFactory.getLogger(TransactionPersistenceService.class);
     private final TransactionItemRepository transactionItemRepository;
+    private final OrderBookMetrics orderBookMetrics;
 
-    public TransactionPersistenceService(TransactionItemRepository transactionItemRepository) {
+    public TransactionPersistenceService(TransactionItemRepository transactionItemRepository, OrderBookMetrics orderBookMetrics) {
         this.transactionItemRepository = transactionItemRepository;
+        this.orderBookMetrics = orderBookMetrics;
     }
 
     public void persistAll(List<MatchResult> results) {
@@ -36,14 +39,22 @@ public class TransactionPersistenceService {
     }
 
     private void persist(MatchResult result) {
-        OrderItemModel incoming = result.getIncomingOrder();
-        OrderItemModel counterpart = result.getMatchedOrder();
-        TransactionItemModel incomingTx = buildTransaction(incoming, counterpart, result);
-        TransactionItemModel counterpartTx = buildTransaction(counterpart, incoming, result.mirrored());
-        transactionItemRepository.insert(incomingTx);
-        log.debug("Persisted incoming tx {} for order {}", incomingTx.getTransactionID(), incoming.getOrderId());
-        transactionItemRepository.insert(counterpartTx);
-        log.debug("Persisted counterpart tx {} for order {}", counterpartTx.getTransactionID(), counterpart.getOrderId());
+        String side = result.getIncomingOrder().getOrderType().strip().toLowerCase();
+        try {
+            OrderItemModel incoming = result.getIncomingOrder();
+            OrderItemModel counterpart = result.getMatchedOrder();
+            TransactionItemModel incomingTx = buildTransaction(incoming, counterpart, result);
+            TransactionItemModel counterpartTx = buildTransaction(counterpart, incoming, result.mirrored());
+            orderBookMetrics.persistTimer(side).record(() -> {
+                transactionItemRepository.insert(incomingTx);
+                transactionItemRepository.insert(counterpartTx);
+            });
+            log.debug("Persisted incoming tx {} for order {}", incomingTx.getTransactionID(), incoming.getOrderId());
+            log.debug("Persisted counterpart tx {} for order {}", counterpartTx.getTransactionID(), counterpart.getOrderId());
+        } catch (Exception e) {
+            orderBookMetrics.recordPersistFailure(side);
+            log.error("Persistence failure: {}", e.getMessage(), e);
+        }
     }
 
     private TransactionItemModel buildTransaction(

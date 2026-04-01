@@ -51,6 +51,8 @@ rootAssetHashMap                          HashMap<String, ...>
 `BigDecimal` is used for all price values to guarantee exact decimal arithmetic — no floating-point rounding errors in financial calculations.
 
 `MongoDB` is used as the 'Cold Path' for audit-logging and transaction history, ensuring that matching logic (the 'Hot Path') remains entirely in-memory for microsecond latency
+
+`Resilience4j` used to place a circuit breaker on gateway → matching-engine route
 ## Engineering Design
 
 ### Refactored matching logic — Strategy pattern
@@ -96,6 +98,25 @@ Every order processed emits structured metrics:
 
 Metrics are pre-registered at startup so dashboards show zero-baselines before the first order arrives. Exposed at `/actuator/prometheus` for Grafana scraping.
 
+---
+### Resilience — Circuit Breaker
+
+The API Gateway wraps calls to the Matching-Engine service with a
+Resilience4j circuit breaker:
+
+| Parameter | Value | Rationale |
+|---|---|---|
+| `slidingWindowSize` | 10 | Rolling window of last 10 calls |
+| `minimumNumberOfCalls` | 5 | Avoids tripping on startup noise |
+| `failureRateThreshold` | 50% | Opens after 5/10 failures |
+| `waitDurationInOpenState` | 10s | Backoff before re-attempting |
+| `permittedNumberOfCallsInHalfOpenState` | 3 | Probes recovery cautiously |
+
+Should the circuit get open, the gateway returns a fast-fail response rather
+than allowing threads to pile up waiting on a degraded downstream service.
+Orders submitted during an open circuit are rejected with a 503 — Kafka
+durability means no orders are lost; clients can retry once the circuit
+recovers.
 ---
 
 ## Concurrency Design

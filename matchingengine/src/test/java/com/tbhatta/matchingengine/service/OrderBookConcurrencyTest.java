@@ -5,12 +5,10 @@ import com.tbhatta.matchingengine.model.TransactionItemModel;
 import com.tbhatta.matchingengine.order_records.repository.TransactionItemRepository;
 import com.tbhatta.matchingengine.service.matching.AskMatchingStrategy;
 import com.tbhatta.matchingengine.service.matching.BidMatchingStrategy;
+import com.tbhatta.matchingengine.service.metrics.OrderBookMetrics;
 import com.tbhatta.matchingengine.service.persistence.TransactionPersistenceService;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.RepeatedTest;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -42,13 +40,17 @@ public class OrderBookConcurrencyTest {
     @BeforeEach
     void setup() {
         AssetOrderBookFactory factory = new AssetOrderBookFactory();
-        TransactionPersistenceService ps = new TransactionPersistenceService(transactionItemRepository);
+        SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
+        OrderBookMetrics orderBookMetrics = new OrderBookMetrics(meterRegistry);
+        TransactionPersistenceService ps = new TransactionPersistenceService(transactionItemRepository,
+                orderBookMetrics);
 
         orderBook = new OrderBook(
                 factory,
                 new AskMatchingStrategy(),
                 new BidMatchingStrategy(),
-                ps
+                ps,
+                orderBookMetrics
         );
     }
 

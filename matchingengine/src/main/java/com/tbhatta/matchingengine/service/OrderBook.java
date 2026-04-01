@@ -8,6 +8,7 @@ import com.tbhatta.matchingengine.service.matching.AskMatchingStrategy;
 import com.tbhatta.matchingengine.service.matching.BidMatchingStrategy;
 import com.tbhatta.matchingengine.service.matching.MatchResult;
 import com.tbhatta.matchingengine.service.matching.MatchingStrategy;
+import com.tbhatta.matchingengine.service.metrics.OrderBookMetrics;
 import com.tbhatta.matchingengine.service.persistence.TransactionPersistenceService;
 import com.tbhatta.matchingengine.order_records.repository.TransactionItemRepository;
 import org.slf4j.Logger;
@@ -36,10 +37,7 @@ public class OrderBook {
     public TreeMap<BigDecimal, PriorityQueue<OrderItemModel>> bidTreeMap, askTreeMap;
     public HashMap<String, HashMap<String, TreeMap<BigDecimal, PriorityQueue<OrderItemModel>>>> rootAssetHashMap;
     private final ConcurrentHashMap<String, AssetOrderBook> assetBooks = new ConcurrentHashMap<>();
-    @Autowired
-    public TransactionItemRepository transactionItemRepository;
-    //    @Autowired
-    //    public TransactionPersistenceService transactionPersistenceService;
+    private final OrderBookMetrics orderBookMetrics;
     private final AssetOrderBookFactory assetOrderBookFactory;
     private final AskMatchingStrategy askMatchingStrategy;
     private final BidMatchingStrategy bidMatchingStrategy;
@@ -49,17 +47,14 @@ public class OrderBook {
             AssetOrderBookFactory assetOrderBookFactory,
             AskMatchingStrategy askMatchingStrategy,
             BidMatchingStrategy bidMatchingStrategy,
-            TransactionPersistenceService transactionPersistenceService
+            TransactionPersistenceService transactionPersistenceService,
+            OrderBookMetrics orderBookMetrics
     ) {
-        //askPQ = new PriorityQueue<>(new AskComparatorPrice());
-        //bidPQ = new PriorityQueue<>(new BidComparatorPrice());
-        // //
-        //bidTreeMap = new TreeMap<>(new BidComparatorPriceBigDecimal());
-        //askTreeMap = new TreeMap<>(new AskComparatorPriceBigDecimal());
         this.assetOrderBookFactory = assetOrderBookFactory;
         this.askMatchingStrategy = askMatchingStrategy;
         this.bidMatchingStrategy = bidMatchingStrategy;
         this.transactionPersistenceService = transactionPersistenceService;
+        this.orderBookMetrics = orderBookMetrics;
         rootAssetHashMap = new HashMap<>();
     }
 
@@ -67,12 +62,16 @@ public class OrderBook {
         try {
             String asset     = normalise(orderItemModel.getAsset());
             String orderType = normalise(orderItemModel.getOrderType());
+            orderBookMetrics.recordOrderReceived(orderType);
             AssetOrderBook orderBook = assetBooks.computeIfAbsent(
                     asset, k -> assetOrderBookFactory.createAssetBook()
             );
             orderBook.acquireWriteLock();
             try {
-                processOrder(orderItemModel, orderBook, orderType);
+                //processOrder(orderItemModel, orderBook, orderType);
+                orderBookMetrics.matchTimer(orderType).record(() -> {
+                    processOrder(orderItemModel, orderBook, orderType); // your existing matching call
+                });
             } catch (Exception e) {
                 log.error("Error in enterOrderItem_ for order {}: {}",
                         orderItemModel.getOrderId(), e.getMessage(), e);
@@ -113,6 +112,13 @@ public class OrderBook {
         } else {
             throw new IllegalArgumentException(
                     "OrderType must be 'bid' or 'ask', got: " + order.getOrderType()
+            );
+        }
+        for (MatchResult fill : fills) {
+            orderBookMetrics.recordFill(
+                    orderType,
+                    fill.getFillType().name(),
+                    fill.getFillVolume().doubleValue()
             );
         }
         transactionPersistenceService.persistAll(fills);
