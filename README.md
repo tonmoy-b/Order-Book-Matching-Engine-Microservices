@@ -84,6 +84,10 @@ Additional patterns applied:
 Scenarios covered: exact fills, partial fills (both directions), multi-level draining, price boundary enforcement, self-match prevention, persistence failure resilience, volume conservation under concurrency, cross-asset independence, and atomic asset book initialisation.
 
 ### Observability — Micrometer + Prometheus 
+> **Observed latency:** 0.75ms p99 matching latency on local Docker without JVM tuning.
+
+> ZGC and CPU affinity are the identified next steps to reduce this further — see [Future Architecture](#future-architecture).
+
 
 Every order processed emits structured metrics:
 
@@ -216,17 +220,17 @@ The current architecture utilizes asset-ticker partitioning to guarantee strict 
 
 ## Tech Stack
 
-| Layer | Technology |
-|---|---|
-| Frontend | Next.js 15, TypeScript |
+| Layer | Technology                        |
+|---|-----------------------------------|
+| Frontend | Next.js 15, TypeScript            |
 | API Gateway | Spring Boot, Spring Cloud Gateway |
-| Microservices | Java 17, Spring Boot 3 |
-| Messaging | Apache Kafka, Protobuf |
-| Persistence | MongoDB |
-| Testing | JUnit 5, Mockito, AssertJ |
-| Metrics | Micrometer, Prometheus |
-| Infrastructure | Docker, Docker Compose |
-| CI | GitHub Actions |
+| Microservices | Java 21, Spring Boot 3            |
+| Messaging | Apache Kafka, Protobuf            |
+| Persistence | MongoDB                           |
+| Testing | JUnit 5, Mockito, AssertJ         |
+| Metrics | Micrometer, Prometheus            |
+| Infrastructure | Docker, Docker Compose            |
+| CI | GitHub Actions                    |
 
 ---
 ## Architectural Diagram
@@ -265,8 +269,8 @@ Follow these steps to get the microservices up and running immediately after clo
 10. At which point you will be in the below screen: ![Order Entry Screen](./images/Screencaps/EntryOrderScreenScreenshot_.png "App Order Screen.")
 11. After entering the orders you view the completed transactions as below: ![Transactions Screen](./images/Screencaps/TransactionsRecordScreenFilledScreenshot.png "Transactions Screen.")
 12. You can also view the pending Orders as below: ![Pending Orders Screen](./images/Screencaps/PendingTxRecordScreenFilledScreenshot.png "Pending Orders Screen.")
-    
 
+> **Prerequisites:** Node.js 18.17+ required for the Next.js frontend.
 
 ## YouTube Quick Demo: 
 [![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/9uIVNLf1A-0/0.jpg)](https://www.youtube.com/watch?v=9uIVNLf1A-0)
